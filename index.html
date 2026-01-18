@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Solar System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container"></div>
+    <div id="info">
+        <h1>3D Solar System</h1>
+        <p>Drag to rotate | Scroll to zoom | Click planet to focus</p>
+    </div>
+    
+    <!-- Date Display -->
+    <div id="dateDisplay">
+        <span id="simDate">January 1, 2000</span>
+    </div>
+    
+    <!-- Time Controls -->
+    <div id="controls">
+        <button id="rewindBtn" title="Rewind">&#9194;</button>
+        <button id="slowBtn" title="Slow Down">&#9668;</button>
+        <button id="pauseBtn" title="Pause/Play">&#9208;</button>
+        <button id="fastBtn" title="Speed Up">&#9658;</button>
+        <button id="ffwdBtn" title="Fast Forward">&#9193;</button>
+        <div id="speedDisplay">1.0x</div>
+    </div>
+    
+    <!-- Planet Info Panel -->
+    <div id="infoPanel" class="hidden">
+        <button id="closePanelBtn">&times;</button>
+        <h2 id="planetName">Earth</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Type</span>
+                <span id="planetType">Terrestrial</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Diameter</span>
+                <span id="planetDiameter">12,742 km</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Distance from Sun</span>
+                <span id="planetDistance">149.6 million km</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Day Length</span>
+                <span id="planetDay">24 hours</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Year Length</span>
+                <span id="planetYear">365.25 days</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Known Moons</span>
+                <span id="planetMoons">1</span>
+            </div>
+        </div>
+        <button id="unfocusBtn" class="hidden">Stop Following</button>
+    </div>
+    
+    <!-- Mini Map -->
+    <div id="miniMap">
+        <canvas id="miniMapCanvas" width="180" height="180"></canvas>
+    </div>
+    
+    <!-- Settings Panel -->
+    <div id="settingsPanel">
+        <button id="settingsToggle" title="Settings">&#9881;</button>
+        <div id="settingsContent" class="hidden">
+            <h3>Settings</h3>
+            <label><input type="checkbox" id="toggleLabels" checked> Show Labels</label>
+            <label><input type="checkbox" id="toggleOrbits" checked> Show Orbits</label>
+            <label><input type="checkbox" id="toggleEffects" checked> Show Effects</label>
+            <label><input type="checkbox" id="toggleAsteroids" checked> Show Asteroids</label>
+        </div>
+    </div>
+    
+    <!-- Fullscreen Button -->
+    <button id="fullscreenBtn" title="Fullscreen">&#x26F6;</button>
+    
+    <!-- Three.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- CSS2DRenderer for labels -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+    
+    <script src="main.js"></script>
+</body>
+</html>
