@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>3D Solar System</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -10,7 +10,7 @@
     <div id="container"></div>
     <div id="info">
         <h1>3D Solar System</h1>
-        <p>Drag to rotate | Scroll to zoom | Click planet to focus</p>
+        <p>Drag to rotate | Scroll to zoom | Click planet to focus | M to toggle music</p>
     </div>
     
     <!-- Date Display -->
@@ -80,6 +80,14 @@
     
     <!-- Fullscreen Button -->
     <button id="fullscreenBtn" title="Fullscreen">&#x26F6;</button>
+    
+    <!-- Sound Toggle Button -->
+    <button id="soundBtn" title="Toggle Music">&#128264;</button>
+    
+    <!-- Background Music -->
+    <audio id="bgMusic" loop>
+        <source src="audio/Orbital_Drift_1.mp3" type="audio/mpeg">
+    </audio>
     
     <!-- Three.js from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

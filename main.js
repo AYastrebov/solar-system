@@ -174,6 +174,12 @@ function init() {
     // Handle window resize
     window.addEventListener('resize', onWindowResize);
     
+    // Handle orientation change on mobile
+    window.addEventListener('orientationchange', () => {
+        // Delay to allow browser to update dimensions
+        setTimeout(onWindowResize, 100);
+    });
+    
     // Setup time controls
     setupTimeControls();
     
@@ -188,6 +194,15 @@ function init() {
     
     // Setup info panel close button
     setupInfoPanel();
+    
+    // Setup background music
+    setupBackgroundMusic();
+    
+    // Initial mini map size setup
+    updateMiniMapSize();
+    
+    // Prevent default touch behaviors that interfere with 3D controls
+    setupTouchHandling();
     
     // Start animation loop
     animate();
@@ -835,7 +850,7 @@ function addJupiterEffects(planet, data) {
 
 // Saturn - Enhanced rings and atmospheric glow
 function addSaturnEffects(planet, data) {
-    // Main ring (already added, but let's enhance)
+    // Main ring - ring particles orbit the planet
     const ringGeometry = new THREE.RingGeometry(
         data.size * 1.4,
         data.size * 2.2,
@@ -851,7 +866,7 @@ function addSaturnEffects(planet, data) {
     ring.rotation.x = Math.PI / 2.5;
     planet.add(ring);
     
-    // Inner ring (darker)
+    // Inner ring (darker, orbits faster)
     const innerRingGeometry = new THREE.RingGeometry(
         data.size * 1.2,
         data.size * 1.38,
@@ -867,7 +882,7 @@ function addSaturnEffects(planet, data) {
     innerRing.rotation.x = Math.PI / 2.5;
     planet.add(innerRing);
     
-    // Outer faint ring
+    // Outer faint ring (orbits slower)
     const outerRingGeometry = new THREE.RingGeometry(
         data.size * 2.25,
         data.size * 2.6,
@@ -882,6 +897,29 @@ function addSaturnEffects(planet, data) {
     const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial);
     outerRing.rotation.x = Math.PI / 2.5;
     planet.add(outerRing);
+    
+    // Add ring rotation animations (inner rings orbit faster - Keplerian motion)
+    // Rotate around Z-axis since rings are tilted with rotation.x
+    planetEffects.push({
+        type: 'ring',
+        mesh: innerRing,
+        rotationSpeed: 0.006,
+        rotationAxis: 'z'
+    });
+    
+    planetEffects.push({
+        type: 'ring',
+        mesh: ring,
+        rotationSpeed: 0.004,
+        rotationAxis: 'z'
+    });
+    
+    planetEffects.push({
+        type: 'ring',
+        mesh: outerRing,
+        rotationSpeed: 0.002,
+        rotationAxis: 'z'
+    });
     
     // Atmospheric glow
     const glowGeometry = new THREE.SphereGeometry(data.size * 1.1, 32, 32);
@@ -915,6 +953,7 @@ function addSaturnEffects(planet, data) {
 // The planet's tilt is applied via axialTilt, rings are in equatorial plane
 function addUranusEffects(planet, data) {
     // Rings (in equatorial plane - will appear vertical due to planet's 98° tilt)
+    // Ring particles orbit the planet, with inner particles moving faster
     const ringGeometry = new THREE.RingGeometry(
         data.size * 1.3,
         data.size * 1.8,
@@ -930,7 +969,7 @@ function addUranusEffects(planet, data) {
     ring.rotation.x = Math.PI / 2;  // Flat in equatorial plane
     planet.add(ring);
     
-    // Inner ring
+    // Inner ring (orbits faster than outer ring)
     const innerRingGeometry = new THREE.RingGeometry(
         data.size * 1.15,
         data.size * 1.28,
@@ -945,6 +984,21 @@ function addUranusEffects(planet, data) {
     const innerRing = new THREE.Mesh(innerRingGeometry, innerRingMaterial);
     innerRing.rotation.x = Math.PI / 2;  // Flat in equatorial plane
     planet.add(innerRing);
+    
+    // Add ring rotation animations (inner ring orbits faster)
+    planetEffects.push({
+        type: 'ring',
+        mesh: ring,
+        rotationSpeed: 0.003,
+        rotationAxis: 'z'  // Rotate around Z since ring is tilted
+    });
+    
+    planetEffects.push({
+        type: 'ring',
+        mesh: innerRing,
+        rotationSpeed: 0.005,  // Inner ring orbits faster
+        rotationAxis: 'z'
+    });
     
     // Cyan atmospheric glow
     const glowGeometry = new THREE.SphereGeometry(data.size * 1.12, 32, 32);
@@ -1114,14 +1168,31 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    
+    // Update mini map canvas size for responsive layout
+    updateMiniMapSize();
+}
+
+// Update mini map canvas dimensions based on container size
+function updateMiniMapSize() {
+    const miniMapContainer = document.getElementById('miniMap');
+    const canvas = document.getElementById('miniMapCanvas');
+    const size = miniMapContainer.offsetWidth;
+    canvas.width = size;
+    canvas.height = size;
 }
 
 // Animate planet visual effects
 function animatePlanetEffects(time) {
     planetEffects.forEach(effect => {
-        // Rotate clouds and atmospheric bands
+        // Rotate clouds, atmospheric bands, and rings
         if (effect.rotationSpeed) {
-            effect.mesh.rotation.y += effect.rotationSpeed;
+            // Use specified rotation axis or default to Y
+            if (effect.rotationAxis === 'z') {
+                effect.mesh.rotation.z += effect.rotationSpeed;
+            } else {
+                effect.mesh.rotation.y += effect.rotationSpeed;
+            }
         }
         
         // Pulse opacity for atmospheres
@@ -1344,6 +1415,35 @@ function createKuiperBelt() {
 // Setup click to focus on planets
 function setupClickToFocus() {
     renderer.domElement.addEventListener('click', onPlanetClick);
+    
+    // Touch support for mobile - use touchend with tap detection
+    let touchStartTime = 0;
+    let touchStartPos = { x: 0, y: 0 };
+    
+    renderer.domElement.addEventListener('touchstart', (e) => {
+        touchStartTime = Date.now();
+        if (e.touches.length === 1) {
+            touchStartPos.x = e.touches[0].clientX;
+            touchStartPos.y = e.touches[0].clientY;
+        }
+    }, { passive: true });
+    
+    renderer.domElement.addEventListener('touchend', (e) => {
+        const touchDuration = Date.now() - touchStartTime;
+        const touch = e.changedTouches[0];
+        const moveDistance = Math.sqrt(
+            Math.pow(touch.clientX - touchStartPos.x, 2) + 
+            Math.pow(touch.clientY - touchStartPos.y, 2)
+        );
+        
+        // Only trigger if it was a quick tap (not a drag/rotate)
+        if (touchDuration < 300 && moveDistance < 20) {
+            onPlanetClick({
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+        }
+    }, { passive: true });
 }
 
 function onPlanetClick(event) {
@@ -1444,15 +1544,21 @@ function updateMiniMap() {
     const ctx = canvas.getContext('2d');
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const scale = 1.3; // Scale factor to fit all planets
+    // Dynamic scale based on canvas size (base scale for 180px canvas)
+    const baseSize = 180;
+    const scaleFactor = canvas.width / baseSize;
+    const scale = 1.3 / scaleFactor; // Adjust scale for smaller canvas
     
     // Clear canvas
     ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // Responsive size multiplier
+    const sizeMultiplier = canvas.width / 180;
+    
     // Draw Sun
     ctx.beginPath();
-    ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, Math.max(2, 4 * sizeMultiplier), 0, Math.PI * 2);
     ctx.fillStyle = '#ffdd00';
     ctx.fill();
     
@@ -1465,7 +1571,7 @@ function updateMiniMap() {
             ctx.beginPath();
             ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 0.5;
+            ctx.lineWidth = Math.max(0.5, 0.5 * sizeMultiplier);
             ctx.stroke();
         }
         
@@ -1476,7 +1582,7 @@ function updateMiniMap() {
         
         // Draw planet
         ctx.beginPath();
-        const size = Math.max(2, planet.data.size * 1.5);
+        const size = Math.max(1.5, planet.data.size * 1.5 * sizeMultiplier);
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fillStyle = '#' + planet.data.color.toString(16).padStart(6, '0');
         ctx.fill();
@@ -1484,9 +1590,9 @@ function updateMiniMap() {
         // Highlight focused planet
         if (focusedPlanet === planet) {
             ctx.beginPath();
-            ctx.arc(x, y, size + 3, 0, Math.PI * 2);
+            ctx.arc(x, y, size + 2 * sizeMultiplier, 0, Math.PI * 2);
             ctx.strokeStyle = '#88ccff';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = Math.max(1, 2 * sizeMultiplier);
             ctx.stroke();
         }
     });
@@ -1494,13 +1600,15 @@ function updateMiniMap() {
     // Draw camera position indicator
     const camDist = Math.sqrt(camera.position.x ** 2 + camera.position.z ** 2) / scale;
     const camAngle = Math.atan2(camera.position.z, camera.position.x);
-    const camX = centerX + Math.cos(camAngle) * Math.min(camDist, 85);
-    const camY = centerY + Math.sin(camAngle) * Math.min(camDist, 85);
+    const maxCamDist = (canvas.width / 2) - 5;
+    const camX = centerX + Math.cos(camAngle) * Math.min(camDist, maxCamDist);
+    const camY = centerY + Math.sin(camAngle) * Math.min(camDist, maxCamDist);
     
+    const triSize = Math.max(3, 4 * sizeMultiplier);
     ctx.beginPath();
     ctx.moveTo(camX, camY);
-    ctx.lineTo(camX - 4, camY - 6);
-    ctx.lineTo(camX + 4, camY - 6);
+    ctx.lineTo(camX - triSize, camY - triSize * 1.5);
+    ctx.lineTo(camX + triSize, camY - triSize * 1.5);
     ctx.closePath();
     ctx.fillStyle = '#ffffff';
     ctx.fill();
@@ -1606,6 +1714,96 @@ function setupFullscreen() {
     document.addEventListener('fullscreenchange', () => {
         if (!document.fullscreenElement) {
             btn.innerHTML = '&#x26F6;';
+        }
+    });
+}
+
+// Touch handling for mobile devices
+function setupTouchHandling() {
+    // Prevent pull-to-refresh and other default gestures on the canvas
+    const container = document.getElementById('container');
+    
+    container.addEventListener('touchmove', (e) => {
+        // Allow OrbitControls to handle touch, prevent page scroll
+        if (e.touches.length > 0) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+    
+    // Prevent double-tap zoom on buttons
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(btn => {
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            btn.click();
+        });
+    });
+}
+
+// Background music control
+function setupBackgroundMusic() {
+    const bgMusic = document.getElementById('bgMusic');
+    const soundBtn = document.getElementById('soundBtn');
+    let musicStarted = false;
+    
+    // Set initial volume
+    bgMusic.volume = 0.5;
+    
+    // Function to start music and update UI
+    function startMusic() {
+        if (musicStarted) return;
+        bgMusic.play().then(() => {
+            musicStarted = true;
+            soundBtn.innerHTML = '&#128266;'; // Speaker with sound waves
+            soundBtn.classList.add('playing');
+        }).catch(err => {
+            console.log('Audio autoplay blocked, waiting for user interaction');
+        });
+    }
+    
+    // Try to autoplay immediately
+    startMusic();
+    
+    // If autoplay was blocked, start on first user interaction
+    function startOnInteraction() {
+        if (!musicStarted) {
+            startMusic();
+        }
+        // Remove listeners after first successful play
+        if (musicStarted) {
+            document.removeEventListener('click', startOnInteraction);
+            document.removeEventListener('touchstart', startOnInteraction);
+            document.removeEventListener('keydown', startOnInteraction);
+        }
+    }
+    
+    document.addEventListener('click', startOnInteraction);
+    document.addEventListener('touchstart', startOnInteraction);
+    document.addEventListener('keydown', startOnInteraction);
+    
+    // Toggle music on button click
+    soundBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent triggering startOnInteraction twice
+        
+        if (bgMusic.paused) {
+            bgMusic.play().then(() => {
+                musicStarted = true;
+                soundBtn.innerHTML = '&#128266;'; // Speaker with sound waves
+                soundBtn.classList.add('playing');
+            }).catch(err => {
+                console.log('Audio playback failed:', err);
+            });
+        } else {
+            bgMusic.pause();
+            soundBtn.innerHTML = '&#128264;'; // Muted speaker
+            soundBtn.classList.remove('playing');
+        }
+    });
+    
+    // Add keyboard shortcut (M key)
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'KeyM') {
+            soundBtn.click();
         }
     });
 }
