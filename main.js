@@ -6,6 +6,7 @@
 let scene, camera, renderer, labelRenderer;
 let controls;
 let sun;
+let textureLoader;
 let sunLayers = [];  // For animated sun effects
 let sunFlares = [];  // For solar flare particles
 let planets = [];
@@ -14,13 +15,15 @@ let moons = [];
 let asteroidBelt;  // Asteroid belt particle system
 let kuiperBelt;    // Kuiper belt particle system
 let clock;
+let lensFlare;     // Sun lens flare effect
+let voyager1, voyager2;  // Voyager spacecraft
 
 // Time control variables
-let timeScale = 1.0;
+let timeScale = 0.25;
 let isPaused = false;
 let simulationTime = 0;
 const speedSteps = [0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0];
-let currentSpeedIndex = 3; // Start at 1.0x
+let currentSpeedIndex = 1; // Start at 0.25x
 
 // Camera focus/follow
 let focusedPlanet = null;
@@ -46,56 +49,104 @@ let orbitLines = [];
 const J2000 = new Date('2000-01-01T12:00:00Z');
 const baseSimulationDate = new Date();
 
-// Planet data: name, color, size, orbitRadius, orbitSpeed, rotationSpeed, inclination (degrees), axialTilt, info
+// Planet data: name, color, size, orbitRadius, orbitSpeed, rotationSpeed, inclination (degrees), axialTilt, texture, info
 // Orbital speeds relative to Earth (1/orbital period in years)
 // Sizes are scaled for visibility, not to actual scale
 const planetData = [
     { 
         name: 'Mercury', color: 0x8c8c8c, size: 0.4, orbitRadius: 10, orbitSpeed: 4.15, rotationSpeed: 0.01,
         inclination: 7.0, axialTilt: 0.03,
-        info: { diameter: '4,879 km', distance: '57.9 million km', dayLength: '58.6 Earth days', yearLength: '88 Earth days', moons: 0, type: 'Terrestrial' }
+        texture: 'textures/2k_mercury.jpg',
+        info: { 
+            diameter: '4,879 km', distance: '57.9 million km', dayLength: '58.6 Earth days', yearLength: '88 Earth days', 
+            moons: 0, type: 'Terrestrial', temperature: '-180°C to 430°C', gravity: '3.7 m/s²',
+            composition: 'Iron core, silicate mantle',
+            features: 'Heavily cratered surface, no atmosphere, extreme temperature variations between day and night.'
+        }
     },
     { 
-        name: 'Venus', color: 0xe6c87a, size: 0.9, orbitRadius: 15, orbitSpeed: 1.62, rotationSpeed: -0.004,  // Retrograde rotation
-        inclination: 3.4, axialTilt: 177.4,  // Nearly upside down
-        info: { diameter: '12,104 km', distance: '108.2 million km', dayLength: '243 Earth days (retrograde)', yearLength: '225 Earth days', moons: 0, type: 'Terrestrial' }
+        name: 'Venus', color: 0xe6c87a, size: 0.9, orbitRadius: 15, orbitSpeed: 1.62, rotationSpeed: -0.004,
+        inclination: 3.4, axialTilt: 177.4,
+        texture: 'textures/2k_venus_atmosphere.jpg',
+        info: { 
+            diameter: '12,104 km', distance: '108.2 million km', dayLength: '243 Earth days (retrograde)', yearLength: '225 Earth days', 
+            moons: 0, type: 'Terrestrial', temperature: '465°C average', gravity: '8.87 m/s²',
+            composition: 'Iron core, rocky mantle, thick CO₂ atmosphere',
+            features: 'Hottest planet, retrograde rotation, crushing atmospheric pressure 90x Earth, sulfuric acid clouds.'
+        }
     },
     { 
         name: 'Earth', color: 0x6b93d6, size: 1, orbitRadius: 20, orbitSpeed: 1, rotationSpeed: 0.02,
         inclination: 0.0, axialTilt: 23.4,
-        info: { diameter: '12,742 km', distance: '149.6 million km', dayLength: '24 hours', yearLength: '365.25 days', moons: 1, type: 'Terrestrial' }
+        texture: 'textures/2k_earth_daymap.jpg',
+        info: { 
+            diameter: '12,742 km', distance: '149.6 million km', dayLength: '24 hours', yearLength: '365.25 days', 
+            moons: 1, type: 'Terrestrial', temperature: '15°C average', gravity: '9.81 m/s²',
+            composition: 'Iron-nickel core, silicate mantle, nitrogen-oxygen atmosphere',
+            features: 'Only known planet with life, 71% water surface, protective magnetic field and ozone layer.'
+        }
     },
     { 
         name: 'Mars', color: 0xc1440e, size: 0.5, orbitRadius: 25, orbitSpeed: 0.53, rotationSpeed: 0.018,
         inclination: 1.85, axialTilt: 25.2,
-        info: { diameter: '6,779 km', distance: '227.9 million km', dayLength: '24.6 hours', yearLength: '687 Earth days', moons: 2, type: 'Terrestrial' }
+        texture: 'textures/2k_mars.jpg',
+        info: { 
+            diameter: '6,779 km', distance: '227.9 million km', dayLength: '24.6 hours', yearLength: '687 Earth days', 
+            moons: 2, type: 'Terrestrial', temperature: '-65°C average', gravity: '3.71 m/s²',
+            composition: 'Iron core, basaltic rock, thin CO₂ atmosphere',
+            features: 'Olympus Mons (largest volcano), Valles Marineris canyon, polar ice caps, evidence of ancient water.'
+        }
     },
     { 
         name: 'Jupiter', color: 0xd8ca9d, size: 2.5, orbitRadius: 35, orbitSpeed: 0.084, rotationSpeed: 0.04,
         inclination: 1.31, axialTilt: 3.1,
-        info: { diameter: '139,820 km', distance: '778.5 million km', dayLength: '9.9 hours', yearLength: '11.86 Earth years', moons: 95, type: 'Gas Giant' }
+        texture: 'textures/2k_jupiter.jpg',
+        info: { 
+            diameter: '139,820 km', distance: '778.5 million km', dayLength: '9.9 hours', yearLength: '11.86 Earth years', 
+            moons: 95, type: 'Gas Giant', temperature: '-110°C cloud tops', gravity: '24.79 m/s²',
+            composition: 'Hydrogen and helium, possible rocky core',
+            features: 'Great Red Spot storm (400+ years old), strongest magnetic field, acts as cosmic vacuum cleaner.'
+        }
     },
     { 
         name: 'Saturn', color: 0xead6b8, size: 2.2, orbitRadius: 45, orbitSpeed: 0.034, rotationSpeed: 0.038,
         inclination: 2.49, axialTilt: 26.7,
-        info: { diameter: '116,460 km', distance: '1.43 billion km', dayLength: '10.7 hours', yearLength: '29.46 Earth years', moons: 146, type: 'Gas Giant' }
+        texture: 'textures/2k_saturn.jpg',
+        info: { 
+            diameter: '116,460 km', distance: '1.43 billion km', dayLength: '10.7 hours', yearLength: '29.46 Earth years', 
+            moons: 146, type: 'Gas Giant', temperature: '-140°C cloud tops', gravity: '10.44 m/s²',
+            composition: 'Hydrogen and helium, ice and rock rings',
+            features: 'Spectacular ring system (270,000 km wide), least dense planet (would float on water), hexagonal polar storm.'
+        }
     },
     { 
-        name: 'Uranus', color: 0xc9eeff, size: 1.6, orbitRadius: 55, orbitSpeed: 0.012, rotationSpeed: -0.03,  // Retrograde due to extreme tilt
-        inclination: 0.77, axialTilt: 97.8,  // Rotates on its side
-        info: { diameter: '50,724 km', distance: '2.87 billion km', dayLength: '17.2 hours (retrograde)', yearLength: '84 Earth years', moons: 27, type: 'Ice Giant' }
+        name: 'Uranus', color: 0xc9eeff, size: 1.6, orbitRadius: 55, orbitSpeed: 0.012, rotationSpeed: -0.03,
+        inclination: 0.77, axialTilt: 97.8,
+        texture: 'textures/2k_uranus.jpg',
+        info: { 
+            diameter: '50,724 km', distance: '2.87 billion km', dayLength: '17.2 hours (retrograde)', yearLength: '84 Earth years', 
+            moons: 27, type: 'Ice Giant', temperature: '-195°C', gravity: '8.69 m/s²',
+            composition: 'Water, methane, ammonia ices over rocky core',
+            features: 'Rotates on its side (98° tilt), faint ring system, blue-green color from methane, extreme seasons.'
+        }
     },
     { 
         name: 'Neptune', color: 0x5b7fde, size: 1.5, orbitRadius: 65, orbitSpeed: 0.006, rotationSpeed: 0.032,
         inclination: 1.77, axialTilt: 28.3,
-        info: { diameter: '49,244 km', distance: '4.5 billion km', dayLength: '16.1 hours', yearLength: '164.8 Earth years', moons: 16, type: 'Ice Giant' }
+        texture: 'textures/2k_neptune.jpg',
+        info: { 
+            diameter: '49,244 km', distance: '4.5 billion km', dayLength: '16.1 hours', yearLength: '164.8 Earth years', 
+            moons: 16, type: 'Ice Giant', temperature: '-200°C', gravity: '11.15 m/s²',
+            composition: 'Water, methane, ammonia ices over rocky core',
+            features: 'Fastest winds in solar system (2,100 km/h), Great Dark Spot storms, vivid blue color, Triton moon orbits backwards.'
+        }
     }
 ];
 
 // Moon data for Earth, Jupiter and Saturn
 const moonData = {
     'Earth': [
-        { name: 'Moon', color: 0xaaaaaa, size: 0.27, orbitRadius: 2.5, orbitSpeed: 2.0 }
+        { name: 'Moon', color: 0xaaaaaa, size: 0.27, orbitRadius: 2.5, orbitSpeed: 2.0, texture: 'textures/2k_moon.jpg' }
     ],
     'Jupiter': [
         { name: 'Io', color: 0xffff66, size: 0.3, orbitRadius: 4, orbitSpeed: 3.5 },
@@ -116,6 +167,9 @@ const moonData = {
 function init() {
     clock = new THREE.Clock();
     
+    // Create texture loader
+    textureLoader = new THREE.TextureLoader();
+    
     // Create scene
     scene = new THREE.Scene();
     
@@ -132,6 +186,7 @@ function init() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.outputEncoding = THREE.sRGBEncoding;  // Proper color output for textures
     document.getElementById('container').appendChild(renderer.domElement);
     
     // Create CSS2D renderer for labels
@@ -147,7 +202,7 @@ function init() {
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.minDistance = 10;
-    controls.maxDistance = 300;  // Extended to see Kuiper Belt
+    controls.maxDistance = 400;  // Extended to see Voyager spacecraft
     
     // Create starfield background
     createStarfield();
@@ -166,6 +221,15 @@ function init() {
     
     // Create Kuiper belt
     createKuiperBelt();
+    
+    // Create Voyager spacecraft
+    createVoyagerSpacecraft();
+    
+    // Create sun lens flare
+    createLensFlare();
+    
+    // Setup keyboard shortcuts for planets
+    setupKeyboardShortcuts();
     
     // Setup raycaster for clicking
     raycaster = new THREE.Raycaster();
@@ -285,15 +349,29 @@ function setupTimeControls() {
     }
 }
 
-// Create starfield background
+// Create starfield background with milky way skybox
 function createStarfield() {
+    // Create a large sphere for the skybox with milky way texture
+    const skyboxGeometry = new THREE.SphereGeometry(500, 64, 64);
+    const milkyWayTexture = textureLoader.load('textures/2k_stars_milky_way.jpg');
+    milkyWayTexture.encoding = THREE.sRGBEncoding;
+    
+    const skyboxMaterial = new THREE.MeshBasicMaterial({
+        map: milkyWayTexture,
+        side: THREE.BackSide  // Render on the inside of the sphere
+    });
+    
+    const skybox = new THREE.Mesh(skyboxGeometry, skyboxMaterial);
+    scene.add(skybox);
+    
+    // Add additional point stars for extra depth
     const starsGeometry = new THREE.BufferGeometry();
-    const starCount = 5000;
+    const starCount = 3000;
     const positions = new Float32Array(starCount * 3);
     
     for (let i = 0; i < starCount * 3; i += 3) {
         // Distribute stars in a sphere around the scene
-        const radius = 300 + Math.random() * 200;
+        const radius = 250 + Math.random() * 150;
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(2 * Math.random() - 1);
         
@@ -306,8 +384,10 @@ function createStarfield() {
     
     const starsMaterial = new THREE.PointsMaterial({
         color: 0xffffff,
-        size: 0.5,
-        sizeAttenuation: true
+        size: 0.4,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.8
     });
     
     const starfield = new THREE.Points(starsGeometry, starsMaterial);
@@ -332,25 +412,37 @@ function createSun() {
     sun = new THREE.Object3D();
     scene.add(sun);
     
-    // Core sun sphere (bright yellow-white center)
-    const coreGeometry = new THREE.SphereGeometry(4.5, 64, 64);
+    // Load sun texture
+    const sunTexture = textureLoader.load('textures/2k_sun.jpg');
+    sunTexture.encoding = THREE.sRGBEncoding;
+    
+    // Core sun sphere with texture
+    const coreGeometry = new THREE.SphereGeometry(5, 64, 64);
     const coreMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffffee
+        map: sunTexture
     });
     const sunCore = new THREE.Mesh(coreGeometry, coreMaterial);
     sun.add(sunCore);
     
-    // Animated surface layers (simulate turbulent surface)
-    const surfaceColors = [0xffdd00, 0xffaa00, 0xff8800, 0xff6600];
-    const surfaceSizes = [5, 5.1, 5.2, 5.3];
-    const surfaceOpacities = [0.9, 0.6, 0.4, 0.3];
+    // Store core for rotation animation
+    sunLayers.push({
+        mesh: sunCore,
+        speedX: 0,
+        speedY: 0.002,
+        speedZ: 0
+    });
     
-    for (let i = 0; i < 4; i++) {
-        const geometry = new THREE.SphereGeometry(surfaceSizes[i], 32, 32);
+    // Animated glow layers (simulate turbulent corona)
+    const glowColors = [0xffdd00, 0xffaa00, 0xff8800];
+    const glowSizes = [5.3, 5.5, 5.8];
+    const glowOpacities = [0.3, 0.2, 0.15];
+    
+    for (let i = 0; i < 3; i++) {
+        const geometry = new THREE.SphereGeometry(glowSizes[i], 32, 32);
         const material = new THREE.MeshBasicMaterial({
-            color: surfaceColors[i],
+            color: glowColors[i],
             transparent: true,
-            opacity: surfaceOpacities[i]
+            opacity: glowOpacities[i]
         });
         const layer = new THREE.Mesh(geometry, material);
         // Random initial rotation
@@ -360,8 +452,8 @@ function createSun() {
         sun.add(layer);
         sunLayers.push({
             mesh: layer,
-            speedX: (Math.random() - 0.5) * 0.02,
-            speedY: (Math.random() - 0.5) * 0.02,
+            speedX: (Math.random() - 0.5) * 0.015,
+            speedY: (Math.random() - 0.5) * 0.015,
             speedZ: (Math.random() - 0.5) * 0.01
         });
     }
@@ -594,12 +686,17 @@ function createOrbitPath(radius, inclination = 0) {
 // Create all planets
 function createPlanets() {
     planetData.forEach(data => {
-        // Create planet mesh
+        // Create planet mesh with texture
         const geometry = new THREE.SphereGeometry(data.size, 32, 32);
+        
+        // Load planet texture
+        const planetTexture = textureLoader.load(data.texture);
+        planetTexture.encoding = THREE.sRGBEncoding;
+        
         const material = new THREE.MeshStandardMaterial({
-            color: data.color,
+            map: planetTexture,
             roughness: 0.8,
-            metalness: 0.2
+            metalness: 0.1
         });
         
         const planet = new THREE.Mesh(geometry, material);
@@ -673,14 +770,14 @@ function addPlanetEffects(planet, data) {
     }
 }
 
-// Mercury - Cratered surface with subtle heat shimmer
+// Mercury - Subtle heat shimmer (cratered surface shown in texture)
 function addMercuryEffects(planet, data) {
-    // Heat glow on sun-facing side (simulated with slight glow)
-    const heatGlow = new THREE.SphereGeometry(data.size * 1.05, 16, 16);
+    // Subtle heat glow
+    const heatGlow = new THREE.SphereGeometry(data.size * 1.03, 16, 16);
     const heatMaterial = new THREE.MeshBasicMaterial({
         color: 0xffaa66,
         transparent: true,
-        opacity: 0.1
+        opacity: 0.06
     });
     const heat = new THREE.Mesh(heatGlow, heatMaterial);
     planet.add(heat);
@@ -690,37 +787,21 @@ function addMercuryEffects(planet, data) {
         mesh: heat,
         planet: planet,
         pulseSpeed: 3,
-        baseOpacity: 0.1
+        baseOpacity: 0.06
     });
 }
 
-// Venus - Thick cloudy atmosphere
+// Venus - Thick cloudy atmosphere (texture shows atmosphere)
 function addVenusEffects(planet, data) {
-    // Dense cloud layer
-    const cloudGeometry = new THREE.SphereGeometry(data.size * 1.08, 32, 32);
-    const cloudMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffe4b5,
-        transparent: true,
-        opacity: 0.4
-    });
-    const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
-    planet.add(clouds);
-    
-    // Outer hazy atmosphere
-    const hazeGeometry = new THREE.SphereGeometry(data.size * 1.15, 32, 32);
+    // Outer hazy glow
+    const hazeGeometry = new THREE.SphereGeometry(data.size * 1.08, 32, 32);
     const hazeMaterial = new THREE.MeshBasicMaterial({
         color: 0xffd699,
         transparent: true,
-        opacity: 0.15
+        opacity: 0.1
     });
     const haze = new THREE.Mesh(hazeGeometry, hazeMaterial);
     planet.add(haze);
-    
-    planetEffects.push({
-        type: 'clouds',
-        mesh: clouds,
-        rotationSpeed: 0.003
-    });
     
     planetEffects.push({
         type: 'atmosphere',
@@ -731,12 +812,15 @@ function addVenusEffects(planet, data) {
 
 // Earth - Blue atmosphere, white clouds
 function addEarthEffects(planet, data) {
-    // Cloud layer
+    // Cloud layer with texture
     const cloudGeometry = new THREE.SphereGeometry(data.size * 1.02, 32, 32);
+    const cloudTexture = textureLoader.load('textures/2k_earth_clouds.jpg');
+    cloudTexture.encoding = THREE.sRGBEncoding;
     const cloudMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
+        map: cloudTexture,
         transparent: true,
-        opacity: 0.35
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending
     });
     const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
     planet.add(clouds);
@@ -776,73 +860,36 @@ function addEarthEffects(planet, data) {
     });
 }
 
-// Mars - Dusty red atmosphere
+// Mars - Dusty red atmosphere (polar caps shown in texture)
 function addMarsEffects(planet, data) {
-    // Dust atmosphere
-    const dustGeometry = new THREE.SphereGeometry(data.size * 1.05, 32, 32);
+    // Thin dust atmosphere
+    const dustGeometry = new THREE.SphereGeometry(data.size * 1.03, 32, 32);
     const dustMaterial = new THREE.MeshBasicMaterial({
         color: 0xff6633,
         transparent: true,
-        opacity: 0.12
+        opacity: 0.08
     });
     const dust = new THREE.Mesh(dustGeometry, dustMaterial);
     planet.add(dust);
-    
-    // Polar ice cap effect (subtle white at top)
-    const polarGeometry = new THREE.SphereGeometry(data.size * 0.3, 16, 16);
-    const polarMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.5
-    });
-    const northPole = new THREE.Mesh(polarGeometry, polarMaterial);
-    northPole.position.y = data.size * 0.85;
-    northPole.scale.y = 0.3;
-    planet.add(northPole);
-    
-    const southPole = new THREE.Mesh(polarGeometry.clone(), polarMaterial.clone());
-    southPole.position.y = -data.size * 0.85;
-    southPole.scale.y = 0.3;
-    planet.add(southPole);
     
     planetEffects.push({
         type: 'dust',
         mesh: dust,
         rotationSpeed: 0.002,
         pulseSpeed: 2,
-        baseOpacity: 0.12,
-        pulseAmount: 0.04
+        baseOpacity: 0.08,
+        pulseAmount: 0.03
     });
 }
 
-// Jupiter - Atmospheric bands and Great Red Spot
+// Jupiter - Atmospheric glow (bands shown in texture)
 function addJupiterEffects(planet, data) {
-    // Atmospheric bands (multiple layers)
-    const bandColors = [0xd8ca9d, 0xc4a574, 0xe8d8b8];
-    
-    for (let i = 0; i < 3; i++) {
-        const bandGeometry = new THREE.SphereGeometry(data.size * (1.02 + i * 0.02), 32, 32);
-        const bandMaterial = new THREE.MeshBasicMaterial({
-            color: bandColors[i],
-            transparent: true,
-            opacity: 0.15 - i * 0.03
-        });
-        const band = new THREE.Mesh(bandGeometry, bandMaterial);
-        planet.add(band);
-        
-        planetEffects.push({
-            type: 'band',
-            mesh: band,
-            rotationSpeed: 0.008 - i * 0.002
-        });
-    }
-    
-    // Outer glow
-    const glowGeometry = new THREE.SphereGeometry(data.size * 1.12, 32, 32);
+    // Subtle atmospheric glow
+    const glowGeometry = new THREE.SphereGeometry(data.size * 1.05, 32, 32);
     const glowMaterial = new THREE.MeshBasicMaterial({
         color: 0xffddaa,
         transparent: true,
-        opacity: 0.08
+        opacity: 0.06
     });
     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
     planet.add(glow);
@@ -850,102 +897,57 @@ function addJupiterEffects(planet, data) {
 
 // Saturn - Enhanced rings and atmospheric glow
 function addSaturnEffects(planet, data) {
-    // Main ring - ring particles orbit the planet
+    // Load ring texture with alpha
+    const ringTexture = textureLoader.load('textures/2k_saturn_ring_alpha.png');
+    ringTexture.encoding = THREE.sRGBEncoding;
+    
+    // Main ring with texture
     const ringGeometry = new THREE.RingGeometry(
-        data.size * 1.4,
-        data.size * 2.2,
+        data.size * 1.2,
+        data.size * 2.5,
         64
     );
+    // Adjust UV mapping for ring geometry to show texture properly
+    const pos = ringGeometry.attributes.position;
+    const uv = ringGeometry.attributes.uv;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const dist = Math.sqrt(x * x + y * y);
+        // Map UV.x based on distance from center (normalized to ring range)
+        const normalizedDist = (dist - data.size * 1.2) / (data.size * 2.5 - data.size * 1.2);
+        uv.setXY(i, normalizedDist, 0.5);
+    }
+    
     const ringMaterial = new THREE.MeshBasicMaterial({
-        color: 0xc9b896,
+        map: ringTexture,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.7
+        opacity: 0.9
     });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.rotation.x = Math.PI / 2.5;
+    // Ring lies flat in equatorial plane (perpendicular to planet's axis)
+    // The planet's axial tilt will rotate the ring naturally
+    ring.rotation.x = Math.PI / 2;
     planet.add(ring);
     
-    // Inner ring (darker, orbits faster)
-    const innerRingGeometry = new THREE.RingGeometry(
-        data.size * 1.2,
-        data.size * 1.38,
-        64
-    );
-    const innerRingMaterial = new THREE.MeshBasicMaterial({
-        color: 0x8b7355,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.5
-    });
-    const innerRing = new THREE.Mesh(innerRingGeometry, innerRingMaterial);
-    innerRing.rotation.x = Math.PI / 2.5;
-    planet.add(innerRing);
-    
-    // Outer faint ring (orbits slower)
-    const outerRingGeometry = new THREE.RingGeometry(
-        data.size * 2.25,
-        data.size * 2.6,
-        64
-    );
-    const outerRingMaterial = new THREE.MeshBasicMaterial({
-        color: 0xd4c4a8,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.25
-    });
-    const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial);
-    outerRing.rotation.x = Math.PI / 2.5;
-    planet.add(outerRing);
-    
-    // Add ring rotation animations (inner rings orbit faster - Keplerian motion)
-    // Rotate around Z-axis since rings are tilted with rotation.x
-    planetEffects.push({
-        type: 'ring',
-        mesh: innerRing,
-        rotationSpeed: 0.006,
-        rotationAxis: 'z'
-    });
-    
+    // Add ring rotation animation
     planetEffects.push({
         type: 'ring',
         mesh: ring,
-        rotationSpeed: 0.004,
-        rotationAxis: 'z'
-    });
-    
-    planetEffects.push({
-        type: 'ring',
-        mesh: outerRing,
-        rotationSpeed: 0.002,
+        rotationSpeed: 0.003,
         rotationAxis: 'z'
     });
     
     // Atmospheric glow
-    const glowGeometry = new THREE.SphereGeometry(data.size * 1.1, 32, 32);
+    const glowGeometry = new THREE.SphereGeometry(data.size * 1.08, 32, 32);
     const glowMaterial = new THREE.MeshBasicMaterial({
         color: 0xffeedd,
         transparent: true,
-        opacity: 0.1
+        opacity: 0.08
     });
     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
     planet.add(glow);
-    
-    // Banded atmosphere
-    const bandGeometry = new THREE.SphereGeometry(data.size * 1.03, 32, 32);
-    const bandMaterial = new THREE.MeshBasicMaterial({
-        color: 0xf5deb3,
-        transparent: true,
-        opacity: 0.2
-    });
-    const band = new THREE.Mesh(bandGeometry, bandMaterial);
-    planet.add(band);
-    
-    planetEffects.push({
-        type: 'band',
-        mesh: band,
-        rotationSpeed: 0.006
-    });
 }
 
 // Uranus - Ice giant with tilted rings and cyan glow
@@ -953,7 +955,6 @@ function addSaturnEffects(planet, data) {
 // The planet's tilt is applied via axialTilt, rings are in equatorial plane
 function addUranusEffects(planet, data) {
     // Rings (in equatorial plane - will appear vertical due to planet's 98° tilt)
-    // Ring particles orbit the planet, with inner particles moving faster
     const ringGeometry = new THREE.RingGeometry(
         data.size * 1.3,
         data.size * 1.8,
@@ -963,103 +964,60 @@ function addUranusEffects(planet, data) {
         color: 0x4a6a7a,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.4
+        opacity: 0.35
     });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
     ring.rotation.x = Math.PI / 2;  // Flat in equatorial plane
     planet.add(ring);
     
-    // Inner ring (orbits faster than outer ring)
-    const innerRingGeometry = new THREE.RingGeometry(
-        data.size * 1.15,
-        data.size * 1.28,
-        64
-    );
-    const innerRingMaterial = new THREE.MeshBasicMaterial({
-        color: 0x3a5a6a,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.3
-    });
-    const innerRing = new THREE.Mesh(innerRingGeometry, innerRingMaterial);
-    innerRing.rotation.x = Math.PI / 2;  // Flat in equatorial plane
-    planet.add(innerRing);
-    
-    // Add ring rotation animations (inner ring orbits faster)
+    // Add ring rotation animation
     planetEffects.push({
         type: 'ring',
         mesh: ring,
         rotationSpeed: 0.003,
-        rotationAxis: 'z'  // Rotate around Z since ring is tilted
-    });
-    
-    planetEffects.push({
-        type: 'ring',
-        mesh: innerRing,
-        rotationSpeed: 0.005,  // Inner ring orbits faster
         rotationAxis: 'z'
     });
     
     // Cyan atmospheric glow
-    const glowGeometry = new THREE.SphereGeometry(data.size * 1.12, 32, 32);
+    const glowGeometry = new THREE.SphereGeometry(data.size * 1.08, 32, 32);
     const glowMaterial = new THREE.MeshBasicMaterial({
         color: 0x88ddff,
         transparent: true,
-        opacity: 0.12
+        opacity: 0.08
     });
     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
     planet.add(glow);
-    
-    // Outer haze
-    const hazeGeometry = new THREE.SphereGeometry(data.size * 1.25, 32, 32);
-    const hazeMaterial = new THREE.MeshBasicMaterial({
-        color: 0x66ccee,
-        transparent: true,
-        opacity: 0.06
-    });
-    const haze = new THREE.Mesh(hazeGeometry, hazeMaterial);
-    planet.add(haze);
     
     planetEffects.push({
         type: 'atmosphere',
         mesh: glow,
         pulseSpeed: 1,
-        baseOpacity: 0.12,
-        pulseAmount: 0.03
+        baseOpacity: 0.08,
+        pulseAmount: 0.02
     });
 }
 
-// Neptune - Deep blue with storms
+// Neptune - Deep blue atmospheric glow (surface shown in texture)
 function addNeptuneEffects(planet, data) {
-    // Atmospheric layers
-    const atmosGeometry = new THREE.SphereGeometry(data.size * 1.08, 32, 32);
+    // Atmospheric glow
+    const atmosGeometry = new THREE.SphereGeometry(data.size * 1.06, 32, 32);
     const atmosMaterial = new THREE.MeshBasicMaterial({
         color: 0x4466ff,
         transparent: true,
-        opacity: 0.2
+        opacity: 0.1
     });
     const atmosphere = new THREE.Mesh(atmosGeometry, atmosMaterial);
     planet.add(atmosphere);
     
     // Outer glow
-    const glowGeometry = new THREE.SphereGeometry(data.size * 1.18, 32, 32);
+    const glowGeometry = new THREE.SphereGeometry(data.size * 1.12, 32, 32);
     const glowMaterial = new THREE.MeshBasicMaterial({
         color: 0x3355dd,
         transparent: true,
-        opacity: 0.1
+        opacity: 0.06
     });
     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
     planet.add(glow);
-    
-    // Storm bands
-    const bandGeometry = new THREE.SphereGeometry(data.size * 1.04, 32, 32);
-    const bandMaterial = new THREE.MeshBasicMaterial({
-        color: 0x5577ee,
-        transparent: true,
-        opacity: 0.15
-    });
-    const band = new THREE.Mesh(bandGeometry, bandMaterial);
-    planet.add(band);
     
     planetEffects.push({
         type: 'atmosphere',
@@ -1068,16 +1026,10 @@ function addNeptuneEffects(planet, data) {
     });
     
     planetEffects.push({
-        type: 'band',
-        mesh: band,
-        rotationSpeed: 0.007
-    });
-    
-    planetEffects.push({
         type: 'atmosphere',
         mesh: glow,
         pulseSpeed: 1.2,
-        baseOpacity: 0.1,
+        baseOpacity: 0.06,
         pulseAmount: 0.02
     });
 }
@@ -1105,11 +1057,24 @@ function createMoons(planet, planetName) {
     planetMoons.forEach(data => {
         // Create moon mesh
         const geometry = new THREE.SphereGeometry(data.size, 16, 16);
-        const material = new THREE.MeshStandardMaterial({
-            color: data.color,
-            roughness: 0.9,
-            metalness: 0.1
-        });
+        
+        let material;
+        if (data.texture) {
+            // Load moon texture if available
+            const moonTexture = textureLoader.load(data.texture);
+            moonTexture.encoding = THREE.sRGBEncoding;
+            material = new THREE.MeshStandardMaterial({
+                map: moonTexture,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+        } else {
+            material = new THREE.MeshStandardMaterial({
+                color: data.color,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+        }
         
         const moon = new THREE.Mesh(geometry, material);
         
@@ -1337,6 +1302,9 @@ function animate() {
     // Update date display
     updateDateDisplay();
     
+    // Update lens flare effect
+    updateLensFlare();
+    
     // Render scene
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
@@ -1536,6 +1504,12 @@ function showInfoPanel(data) {
     document.getElementById('planetDay').textContent = data.info.dayLength;
     document.getElementById('planetYear').textContent = data.info.yearLength;
     document.getElementById('planetMoons').textContent = data.info.moons;
+    
+    // Extended info fields
+    document.getElementById('planetTemperature').textContent = data.info.temperature || 'N/A';
+    document.getElementById('planetGravity').textContent = data.info.gravity || 'N/A';
+    document.getElementById('planetComposition').textContent = data.info.composition || 'N/A';
+    document.getElementById('planetFeatures').textContent = data.info.features || 'N/A';
 }
 
 // Mini map functions
@@ -1804,6 +1778,248 @@ function setupBackgroundMusic() {
     document.addEventListener('keydown', (e) => {
         if (e.code === 'KeyM') {
             soundBtn.click();
+        }
+    });
+}
+
+// Create Voyager spacecraft at edge of solar system
+function createVoyagerSpacecraft() {
+    // Voyager 1 - launched 1977, now beyond Kuiper Belt
+    const voyager1Group = new THREE.Group();
+    
+    // Main body (golden record disk shape)
+    const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xffd700, 
+        metalness: 0.8, 
+        roughness: 0.3 
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.rotation.x = Math.PI / 2;
+    voyager1Group.add(body);
+    
+    // Dish antenna
+    const dishGeometry = new THREE.SphereGeometry(0.5, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    const dishMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xcccccc, 
+        metalness: 0.6, 
+        roughness: 0.4,
+        side: THREE.DoubleSide 
+    });
+    const dish = new THREE.Mesh(dishGeometry, dishMaterial);
+    dish.rotation.x = Math.PI;
+    dish.position.z = 0.3;
+    voyager1Group.add(dish);
+    
+    // Boom arm
+    const boomGeometry = new THREE.CylinderGeometry(0.02, 0.02, 1.5, 8);
+    const boomMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+    const boom = new THREE.Mesh(boomGeometry, boomMaterial);
+    boom.rotation.z = Math.PI / 2;
+    boom.position.x = 0.8;
+    voyager1Group.add(boom);
+    
+    // RTG (power source)
+    const rtgGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.4, 8);
+    const rtgMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    const rtg = new THREE.Mesh(rtgGeometry, rtgMaterial);
+    rtg.position.x = 1.5;
+    rtg.rotation.z = Math.PI / 2;
+    voyager1Group.add(rtg);
+    
+    // Position Voyager 1 beyond Kuiper Belt
+    voyager1Group.position.set(120, 15, 30);
+    voyager1Group.scale.setScalar(1.5);
+    scene.add(voyager1Group);
+    voyager1 = voyager1Group;
+    
+    // Add label
+    const v1Label = document.createElement('div');
+    v1Label.className = 'planet-label spacecraft-label';
+    v1Label.textContent = 'Voyager 1';
+    const v1LabelObj = new THREE.CSS2DObject(v1Label);
+    v1LabelObj.position.set(0, 1.5, 0);
+    voyager1Group.add(v1LabelObj);
+    
+    // Voyager 2 - create separately (cloning CSS2DObject doesn't work well)
+    const voyager2Group = new THREE.Group();
+    
+    // Copy geometry from voyager 1 components
+    const body2 = new THREE.Mesh(bodyGeometry.clone(), bodyMaterial.clone());
+    body2.rotation.x = Math.PI / 2;
+    voyager2Group.add(body2);
+    
+    const dish2 = new THREE.Mesh(dishGeometry.clone(), dishMaterial.clone());
+    dish2.rotation.x = Math.PI;
+    dish2.position.z = 0.3;
+    voyager2Group.add(dish2);
+    
+    const boom2 = new THREE.Mesh(boomGeometry.clone(), boomMaterial.clone());
+    boom2.rotation.z = Math.PI / 2;
+    boom2.position.x = 0.8;
+    voyager2Group.add(boom2);
+    
+    const rtg2 = new THREE.Mesh(rtgGeometry.clone(), rtgMaterial.clone());
+    rtg2.position.x = 1.5;
+    rtg2.rotation.z = Math.PI / 2;
+    voyager2Group.add(rtg2);
+    
+    // Position Voyager 2
+    voyager2Group.position.set(-95, -10, 85);
+    voyager2Group.scale.setScalar(1.5);
+    scene.add(voyager2Group);
+    voyager2 = voyager2Group;
+    
+    // Add Voyager 2 label
+    const v2LabelDiv = document.createElement('div');
+    v2LabelDiv.className = 'planet-label spacecraft-label';
+    v2LabelDiv.textContent = 'Voyager 2';
+    const v2LabelObj = new THREE.CSS2DObject(v2LabelDiv);
+    v2LabelObj.position.set(0, 1.5, 0);
+    voyager2Group.add(v2LabelObj);
+}
+
+// Create lens flare effect for the Sun using sprites
+function createLensFlare() {
+    lensFlare = new THREE.Group();
+    
+    // Create sprite materials for flare elements
+    const createFlareSprite = (color, size, opacity) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        
+        // Create radial gradient
+        const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+        gradient.addColorStop(0, `rgba(255, 255, 255, ${opacity})`);
+        gradient.addColorStop(0.2, color);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 128, 128);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false
+        });
+        
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(size, size, 1);
+        return sprite;
+    };
+    
+    // Main sun glow
+    const mainGlow = createFlareSprite('rgba(255, 200, 100, 0.3)', 25, 0.5);
+    mainGlow.userData.type = 'main';
+    mainGlow.userData.baseScale = 25;
+    lensFlare.add(mainGlow);
+    
+    // Secondary flare elements along the flare line
+    const flareData = [
+        { color: 'rgba(255, 150, 50, 0.2)', size: 8, dist: 0.3 },
+        { color: 'rgba(100, 180, 255, 0.15)', size: 5, dist: 0.5 },
+        { color: 'rgba(255, 255, 100, 0.2)', size: 10, dist: 0.7 },
+        { color: 'rgba(255, 100, 150, 0.1)', size: 4, dist: 1.1 }
+    ];
+    
+    flareData.forEach(data => {
+        const flare = createFlareSprite(data.color, data.size, 0.3);
+        flare.userData.type = 'secondary';
+        flare.userData.distance = data.dist;
+        flare.userData.baseScale = data.size;
+        flare.visible = false; // Start hidden
+        lensFlare.add(flare);
+    });
+    
+    scene.add(lensFlare);
+}
+
+// Update lens flare based on camera position
+function updateLensFlare() {
+    if (!lensFlare) return;
+    
+    const sunPosition = new THREE.Vector3(0, 0, 0);
+    const cameraPosition = camera.position.clone();
+    
+    // Calculate direction from camera to sun
+    const toSun = sunPosition.clone().sub(cameraPosition);
+    const distanceToSun = toSun.length();
+    
+    // Check if sun is in front of camera
+    const cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
+    const dotProduct = toSun.normalize().dot(cameraDirection);
+    
+    // Sun visibility factor (1 when looking directly at sun, 0 when looking away)
+    const visibility = Math.max(0, dotProduct);
+    const intensity = Math.pow(visibility, 3); // Cubic falloff for sharper effect
+    
+    // Distance-based scaling (flare gets smaller when far from sun)
+    const distanceFactor = Math.max(0.3, Math.min(1, 50 / distanceToSun));
+    
+    lensFlare.children.forEach((flare) => {
+        if (flare.userData.type === 'main') {
+            // Main glow stays at sun position
+            flare.position.copy(sunPosition);
+            const scale = flare.userData.baseScale * distanceFactor * (0.8 + intensity * 0.4);
+            flare.scale.set(scale, scale, 1);
+            flare.material.opacity = intensity * 0.6;
+            flare.visible = intensity > 0.05;
+        } else {
+            // Secondary flares positioned along the line from sun toward camera
+            flare.visible = intensity > 0.3;
+            if (flare.visible) {
+                const flarePos = sunPosition.clone().lerp(cameraPosition, flare.userData.distance * 0.2);
+                flare.position.copy(flarePos);
+                const scale = flare.userData.baseScale * distanceFactor * intensity;
+                flare.scale.set(scale, scale, 1);
+                flare.material.opacity = intensity * 0.4;
+            }
+        }
+    });
+}
+
+// Setup keyboard shortcuts for planet navigation
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Number keys 1-8 for planets
+        const key = e.key;
+        if (key >= '1' && key <= '8') {
+            const planetIndex = parseInt(key) - 1;
+            if (planetIndex < planets.length) {
+                focusOnPlanet(planets[planetIndex]);
+            }
+        }
+        
+        // 0 key to focus on Sun
+        if (key === '0') {
+            unfocusPlanet();
+            // Animate camera to sun
+            const targetPos = new THREE.Vector3(30, 20, 30);
+            camera.position.lerp(targetPos, 0.1);
+            controls.target.set(0, 0, 0);
+        }
+        
+        // Escape to unfocus
+        if (e.code === 'Escape') {
+            unfocusPlanet();
+            document.getElementById('infoPanel').classList.add('hidden');
+        }
+        
+        // V key to focus on Voyager 1
+        if (e.code === 'KeyV') {
+            if (voyager1) {
+                unfocusPlanet();
+                const v1Pos = voyager1.position.clone();
+                const targetPos = v1Pos.clone().add(new THREE.Vector3(10, 5, 10));
+                camera.position.copy(targetPos);
+                controls.target.copy(v1Pos);
+            }
         }
     });
 }

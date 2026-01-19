@@ -10,7 +10,7 @@
     <div id="container"></div>
     <div id="info">
         <h1>3D Solar System</h1>
-        <p>Drag to rotate | Scroll to zoom | Click planet to focus | M to toggle music</p>
+        <p>Drag to rotate | Scroll to zoom | Click planet to focus | Keys 1-8 for planets | V for Voyager | M for music</p>
     </div>
     
     <!-- Date Display -->
@@ -25,7 +25,7 @@
         <button id="pauseBtn" title="Pause/Play">&#9208;</button>
         <button id="fastBtn" title="Speed Up">&#9658;</button>
         <button id="ffwdBtn" title="Fast Forward">&#9193;</button>
-        <div id="speedDisplay">1.0x</div>
+        <div id="speedDisplay">0.25x</div>
     </div>
     
     <!-- Planet Info Panel -->
@@ -56,6 +56,22 @@
             <div class="info-item">
                 <span class="info-label">Known Moons</span>
                 <span id="planetMoons">1</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Temperature</span>
+                <span id="planetTemperature">15°C average</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Surface Gravity</span>
+                <span id="planetGravity">9.81 m/s²</span>
+            </div>
+            <div class="info-item full-width">
+                <span class="info-label">Composition</span>
+                <span id="planetComposition">Iron-nickel core, silicate mantle</span>
+            </div>
+            <div class="info-item full-width">
+                <span class="info-label">Notable Features</span>
+                <span id="planetFeatures" class="features-text">Only known planet with life</span>
             </div>
         </div>
         <button id="unfocusBtn" class="hidden">Stop Following</button>
