@@ -38,7 +38,7 @@ An interactive 3D visualization of our Solar System built with Three.js. Explore
 
 Open `index.html` in a modern web browser. No build tools or server required.
 
-**[Live Demo](https://yourusername.github.io/solar-system/)** *(update with your GitHub Pages URL)*
+**[Live Demo](https://ayastrebov.github.io/solar-system/)**
 
 ## Tech Stack
 
