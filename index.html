@@ -16,8 +16,14 @@
     <!-- Date Display -->
     <div id="dateDisplay">
         <span id="simDate">January 1, 2000</span>
-        <input type="date" id="datePicker" />
-        <button id="resetDateBtn" title="Reset to Today">↻</button>
+        <div id="moonPhaseDisplay">
+            <span id="moonPhaseIcon">🌑</span>
+            <span id="moonPhaseName">New Moon</span>
+        </div>
+        <div class="date-controls">
+            <input type="date" id="datePicker" />
+            <button id="resetDateBtn" title="Reset to Today">↻</button>
+        </div>
     </div>
     
     <!-- Time Controls -->
@@ -44,8 +50,16 @@
                 <span id="planetDiameter">12,742 km</span>
             </div>
             <div class="info-item">
-                <span class="info-label">Distance from Sun</span>
+                <span class="info-label">Avg Distance from Sun</span>
                 <span id="planetDistance">149.6 million km</span>
+            </div>
+            <div class="info-item dynamic-info">
+                <span class="info-label">Current Distance</span>
+                <span id="planetCurrentDistance">--</span>
+            </div>
+            <div class="info-item dynamic-info">
+                <span class="info-label">Visual Magnitude</span>
+                <span id="planetMagnitude">--</span>
             </div>
             <div class="info-item">
                 <span class="info-label">Day Length</span>

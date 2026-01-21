@@ -52,36 +52,23 @@ const J2000 = new Date('2000-01-01T12:00:00Z');
 let baseSimulationDate = new Date();
 let selectedDate = new Date(); // Date selected by user via date picker
 
-// Get real heliocentric positions for all planets using astronomy-engine
-function getRealPlanetPositions(date) {
-    const bodies = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
-    const positions = {};
-    bodies.forEach(body => {
-        // Get heliocentric position vector
-        const vec = Astronomy.HelioVector(body, date);
-        // Convert to ecliptic longitude (angle in radians)
-        positions[body] = Math.atan2(vec.y, vec.x);
-    });
-    return positions;
-}
-
-// Apply real planet positions to all planets
-function applyRealPlanetPositions(date) {
-    const positions = getRealPlanetPositions(date);
-    planets.forEach(planet => {
-        const name = planet.data.name;
-        if (positions[name] !== undefined) {
-            planet.data.initialAngle = positions[name];
-        }
-    });
+// Get the simulated date based on simulation time
+// Earth completes one orbit when simulationTime * 1 * 0.1 = 2*PI
+// So one Earth year = 2*PI / 0.1 = ~62.8 simulation time units
+function getSimulatedDate() {
+    const earthYearInSimTime = (2 * Math.PI) / 0.1;
+    const yearsElapsed = simulationTime / earthYearInSimTime;
+    const simDate = new Date(selectedDate);
+    simDate.setTime(simDate.getTime() + yearsElapsed * 365.25 * 24 * 60 * 60 * 1000);
+    return simDate;
 }
 
 // Planet data: name, color, size, orbitRadius, orbitSpeed, rotationSpeed, inclination (degrees), axialTilt, texture, info
-// Orbital speeds relative to Earth (1/orbital period in years)
-// Sizes are scaled for visibility, not to actual scale
+// Sizes are more proportional: terrestrial ~0.4-1, gas giants ~4-6, ice giants ~2-2.5
+// Real proportions: Mercury 0.38, Venus 0.95, Earth 1, Mars 0.53, Jupiter 11, Saturn 9, Uranus 4, Neptune 3.9
 const planetData = [
     { 
-        name: 'Mercury', color: 0x8c8c8c, size: 0.4, orbitRadius: 10, orbitSpeed: 4.15, rotationSpeed: 0.01,
+        name: 'Mercury', color: 0x8c8c8c, size: 0.38, orbitRadius: 10, orbitSpeed: 4.15, rotationSpeed: 0.01,
         inclination: 7.0, axialTilt: 0.03,
         texture: 'textures/2k_mercury.jpg',
         info: { 
@@ -92,7 +79,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Venus', color: 0xe6c87a, size: 0.9, orbitRadius: 15, orbitSpeed: 1.62, rotationSpeed: -0.004,
+        name: 'Venus', color: 0xe6c87a, size: 0.95, orbitRadius: 15, orbitSpeed: 1.62, rotationSpeed: -0.004,
         inclination: 3.4, axialTilt: 177.4,
         texture: 'textures/2k_venus_atmosphere.jpg',
         info: { 
@@ -103,7 +90,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Earth', color: 0x6b93d6, size: 1, orbitRadius: 20, orbitSpeed: 1, rotationSpeed: 0.02,
+        name: 'Earth', color: 0x6b93d6, size: 1.0, orbitRadius: 20, orbitSpeed: 1, rotationSpeed: 0.02,
         inclination: 0.0, axialTilt: 23.4,
         texture: 'textures/2k_earth_daymap.jpg',
         info: { 
@@ -114,7 +101,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Mars', color: 0xc1440e, size: 0.5, orbitRadius: 25, orbitSpeed: 0.53, rotationSpeed: 0.018,
+        name: 'Mars', color: 0xc1440e, size: 0.53, orbitRadius: 25, orbitSpeed: 0.53, rotationSpeed: 0.018,
         inclination: 1.85, axialTilt: 25.2,
         texture: 'textures/2k_mars.jpg',
         info: { 
@@ -125,7 +112,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Jupiter', color: 0xd8ca9d, size: 2.5, orbitRadius: 35, orbitSpeed: 0.084, rotationSpeed: 0.04,
+        name: 'Jupiter', color: 0xd8ca9d, size: 5.5, orbitRadius: 35, orbitSpeed: 0.084, rotationSpeed: 0.04,
         inclination: 1.31, axialTilt: 3.1,
         texture: 'textures/2k_jupiter.jpg',
         info: { 
@@ -136,7 +123,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Saturn', color: 0xead6b8, size: 2.2, orbitRadius: 45, orbitSpeed: 0.034, rotationSpeed: 0.038,
+        name: 'Saturn', color: 0xead6b8, size: 4.5, orbitRadius: 45, orbitSpeed: 0.034, rotationSpeed: 0.038,
         inclination: 2.49, axialTilt: 26.7,
         texture: 'textures/2k_saturn.jpg',
         info: { 
@@ -147,7 +134,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Uranus', color: 0xc9eeff, size: 1.6, orbitRadius: 55, orbitSpeed: 0.012, rotationSpeed: -0.03,
+        name: 'Uranus', color: 0xc9eeff, size: 2.2, orbitRadius: 55, orbitSpeed: 0.012, rotationSpeed: -0.03,
         inclination: 0.77, axialTilt: 97.8,
         texture: 'textures/2k_uranus.jpg',
         info: { 
@@ -158,7 +145,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Neptune', color: 0x5b7fde, size: 1.5, orbitRadius: 65, orbitSpeed: 0.006, rotationSpeed: 0.032,
+        name: 'Neptune', color: 0x5b7fde, size: 2.1, orbitRadius: 65, orbitSpeed: 0.006, rotationSpeed: 0.032,
         inclination: 1.77, axialTilt: 28.3,
         texture: 'textures/2k_neptune.jpg',
         info: { 
@@ -221,69 +208,20 @@ const moonData = {
     'Pluto': [
         // Charon - large moon, tidally locked, half the size of Pluto
         { name: 'Charon', color: 0x9a9a9a, size: 0.18, orbitRadius: 1.2, orbitSpeed: 1.5 }
-    ],
-    'Eris': [
-        // Dysnomia - small moon
-        { name: 'Dysnomia', color: 0x7a7a7a, size: 0.08, orbitRadius: 1.0, orbitSpeed: 1.0 }
-    ],
-    'Haumea': [
-        // Hi'iaka - larger outer moon
-        { name: "Hi'iaka", color: 0xaaaaaa, size: 0.06, orbitRadius: 1.2, orbitSpeed: 1.2 },
-        // Namaka - smaller inner moon
-        { name: 'Namaka', color: 0x888888, size: 0.04, orbitRadius: 0.8, orbitSpeed: 2.0 }
     ]
 };
 
-// Dwarf planet data: name, color, size, orbitRadius, orbitSpeed, rotationSpeed, inclination (degrees), axialTilt, info
+// Dwarf planet data: name, color, size, rotationSpeed, axialTilt, info
+// Only Pluto is included as it's supported by astronomy-engine for real position calculations
+// Orbital parameters come from astronomy-engine, not hardcoded values
 const dwarfPlanetData = [
     {
-        name: 'Ceres', color: 0x8a8a7a, size: 0.25, orbitRadius: 30, orbitSpeed: 0.21, rotationSpeed: 0.025,
-        inclination: 10.6, axialTilt: 4.0,
+        name: 'Pluto', color: 0xc9b89d, size: 0.45, rotationSpeed: 0.015, axialTilt: 122.5,
         info: {
-            diameter: '940 km', distance: '414 million km', dayLength: '9.1 hours', yearLength: '4.6 Earth years',
-            moons: 0, type: 'Dwarf Planet', temperature: '-105°C average', gravity: '0.28 m/s²',
-            composition: 'Rock and ice, possible subsurface ocean',
-            features: 'Largest object in asteroid belt, bright salt deposits (Occator Crater), possible cryovolcanism.'
-        }
-    },
-    {
-        name: 'Pluto', color: 0xc9b89d, size: 0.35, orbitRadius: 75, orbitSpeed: 0.004, rotationSpeed: 0.015,
-        inclination: 17.2, axialTilt: 122.5,
-        info: {
-            diameter: '2,377 km', distance: '5.9 billion km', dayLength: '6.4 Earth days (retrograde)', yearLength: '248 Earth years',
+            diameter: '2,377 km', distance: '30-49 AU (elliptical)', dayLength: '6.4 Earth days (retrograde)', yearLength: '248 Earth years',
             moons: 5, type: 'Dwarf Planet', temperature: '-230°C average', gravity: '0.62 m/s²',
             composition: 'Nitrogen ice, water ice, rock',
-            features: 'Heart-shaped nitrogen glacier (Tombaugh Regio), thin atmosphere, 5 moons including large Charon.'
-        }
-    },
-    {
-        name: 'Haumea', color: 0xf0f0f0, size: 0.28, orbitRadius: 82, orbitSpeed: 0.0035, rotationSpeed: 0.1,
-        inclination: 28.2, axialTilt: 126.0,
-        info: {
-            diameter: '1,632 km (avg)', distance: '6.5 billion km', dayLength: '3.9 hours', yearLength: '285 Earth years',
-            moons: 2, type: 'Dwarf Planet', temperature: '-241°C', gravity: '0.44 m/s²',
-            composition: 'Crystalline water ice surface, rocky interior',
-            features: 'Elongated ellipsoid shape, fastest rotation of any large body, has rings and two moons.'
-        }
-    },
-    {
-        name: 'Makemake', color: 0xd4a574, size: 0.3, orbitRadius: 88, orbitSpeed: 0.003, rotationSpeed: 0.02,
-        inclination: 29.0, axialTilt: 0.0,
-        info: {
-            diameter: '1,430 km', distance: '6.8 billion km', dayLength: '22.5 hours', yearLength: '306 Earth years',
-            moons: 1, type: 'Dwarf Planet', temperature: '-243°C', gravity: '0.5 m/s²',
-            composition: 'Methane, ethane, nitrogen ices',
-            features: 'Extremely bright surface, reddish-brown color from tholins, one known moon (MK2).'
-        }
-    },
-    {
-        name: 'Eris', color: 0xe8e8e8, size: 0.35, orbitRadius: 100, orbitSpeed: 0.0017, rotationSpeed: 0.018,
-        inclination: 44.0, axialTilt: 78.0,
-        info: {
-            diameter: '2,326 km', distance: '10.1 billion km', dayLength: '25.9 hours', yearLength: '559 Earth years',
-            moons: 1, type: 'Dwarf Planet', temperature: '-243°C', gravity: '0.82 m/s²',
-            composition: 'Methane ice surface, rocky interior',
-            features: 'Most massive known dwarf planet, highly reflective surface, one moon (Dysnomia), extreme orbit.'
+            features: 'Heart-shaped nitrogen glacier (Tombaugh Regio), thin atmosphere, highly elliptical orbit crosses Neptune\'s.'
         }
     }
 ];
@@ -303,7 +241,7 @@ function init() {
         60,
         window.innerWidth / window.innerHeight,
         0.1,
-        1000
+        3000  // Extended to see Pluto at ~1000 units
     );
     camera.position.set(50, 50, 80);
     
@@ -327,7 +265,7 @@ function init() {
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.minDistance = 10;
-    controls.maxDistance = 400;  // Extended to see Voyager spacecraft
+    controls.maxDistance = 1500;  // Extended to see Pluto and Voyager spacecraft
     
     // Create starfield background
     createStarfield();
@@ -483,7 +421,7 @@ function setupTimeControls() {
 // Create starfield background with milky way skybox
 function createStarfield() {
     // Create a large sphere for the skybox with milky way texture
-    const skyboxGeometry = new THREE.SphereGeometry(500, 64, 64);
+    const skyboxGeometry = new THREE.SphereGeometry(2500, 64, 64);  // Extended to encompass outer planets
     const milkyWayTexture = textureLoader.load('textures/2k_stars_milky_way.jpg');
     milkyWayTexture.encoding = THREE.sRGBEncoding;
     
@@ -502,7 +440,7 @@ function createStarfield() {
     
     for (let i = 0; i < starCount * 3; i += 3) {
         // Distribute stars in a sphere around the scene
-        const radius = 250 + Math.random() * 150;
+        const radius = 1500 + Math.random() * 800;  // Extended to match larger viewing area
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(2 * Math.random() - 1);
         
@@ -783,28 +721,45 @@ function createCoronaSpikes() {
     }
 }
 
-// Create orbit path visualization with inclination
-function createOrbitPath(radius, inclination = 0) {
+// Create real orbit path for a planet by sampling positions from astronomy-engine
+function createRealPlanetOrbitPath(bodyName, color = 0x444444) {
+    // Get orbital period in years for proper sampling
+    const orbitalPeriods = {
+        'Mercury': 0.24, 'Venus': 0.62, 'Earth': 1.0, 'Mars': 1.88,
+        'Jupiter': 11.86, 'Saturn': 29.46, 'Uranus': 84.0, 'Neptune': 164.8
+    };
+    const orbitalPeriod = orbitalPeriods[bodyName] || 1.0;
+    
     const segments = 128;
     const orbitGeometry = new THREE.BufferGeometry();
     const positions = new Float32Array((segments + 1) * 3);
     
-    const incRad = (inclination * Math.PI) / 180; // Convert to radians
+    // Use a base date and sample over one complete orbit
+    const baseDate = new Date('2000-01-01T12:00:00Z');
+    const msPerYear = 365.25 * 24 * 60 * 60 * 1000;
     
     for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        // Apply inclination rotation around X axis
-        positions[i * 3] = x;
-        positions[i * 3 + 1] = z * Math.sin(incRad);
-        positions[i * 3 + 2] = z * Math.cos(incRad);
+        const fraction = i / segments;
+        const yearsOffset = fraction * orbitalPeriod;
+        const sampleDate = new Date(baseDate.getTime() + yearsOffset * msPerYear);
+        
+        try {
+            const vec = Astronomy.HelioVector(bodyName, sampleDate);
+            // Convert AU to visual units and apply coordinate transformation
+            positions[i * 3] = vec.x * AU_TO_VISUAL;
+            positions[i * 3 + 1] = vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y
+            positions[i * 3 + 2] = -vec.y * AU_TO_VISUAL; // Negate Y to match rotation direction
+        } catch (e) {
+            positions[i * 3] = 0;
+            positions[i * 3 + 1] = 0;
+            positions[i * 3 + 2] = 0;
+        }
     }
     
     orbitGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     
     const orbitMaterial = new THREE.LineBasicMaterial({
-        color: 0x444444,
+        color: color,
         transparent: true,
         opacity: 0.4
     });
@@ -814,22 +769,42 @@ function createOrbitPath(radius, inclination = 0) {
     return orbit;
 }
 
-// Create dashed orbit path for dwarf planets
-function createDwarfOrbitPath(radius, inclination = 0) {
-    const segments = 128;
+// Create orbit paths using real astronomy data
+// Scale factor: 1 AU = 20 visual units (keeps inner planets visible outside Sun radius of 5)
+// Mercury at 0.39 AU = 7.8 units, Earth at 1 AU = 20 units, Neptune at 30 AU = 600 units
+const AU_TO_VISUAL = 20;
+
+function createRealOrbitPath(bodyName) {
+    // Sample positions over one complete orbit
+    // Pluto's orbital period is ~248 years
+    const segments = 256;
     const orbitGeometry = new THREE.BufferGeometry();
     const positions = new Float32Array((segments + 1) * 3);
     
-    const incRad = (inclination * Math.PI) / 180; // Convert to radians
+    // Use a base date and sample over the orbital period
+    const baseDate = new Date('2000-01-01T12:00:00Z');
+    const orbitalPeriodYears = bodyName === 'Pluto' ? 248 : 165; // Pluto: 248 years
+    const msPerYear = 365.25 * 24 * 60 * 60 * 1000;
     
     for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        // Apply inclination rotation around X axis
-        positions[i * 3] = x;
-        positions[i * 3 + 1] = z * Math.sin(incRad);
-        positions[i * 3 + 2] = z * Math.cos(incRad);
+        const fraction = i / segments;
+        const yearsOffset = fraction * orbitalPeriodYears;
+        const sampleDate = new Date(baseDate.getTime() + yearsOffset * msPerYear);
+        
+        try {
+            const vec = Astronomy.HelioVector(bodyName, sampleDate);
+            // Convert AU to visual units and apply coordinate transformation
+            // Astronomy: X,Y ecliptic -> Three.js: X,Z plane (Y is up)
+            // Negate to match the planet rotation direction
+            positions[i * 3] = vec.x * AU_TO_VISUAL;
+            positions[i * 3 + 1] = vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y (height above ecliptic)
+            positions[i * 3 + 2] = -vec.y * AU_TO_VISUAL; // Negate Y to match rotation direction
+        } catch (e) {
+            // Fallback if astronomy calculation fails
+            positions[i * 3] = 0;
+            positions[i * 3 + 1] = 0;
+            positions[i * 3 + 2] = 0;
+        }
     }
     
     orbitGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -837,7 +812,7 @@ function createDwarfOrbitPath(radius, inclination = 0) {
     const orbitMaterial = new THREE.LineDashedMaterial({
         color: 0x666688,
         transparent: true,
-        opacity: 0.4,
+        opacity: 0.5,
         dashSize: 2,
         gapSize: 1
     });
@@ -848,7 +823,7 @@ function createDwarfOrbitPath(radius, inclination = 0) {
     return orbit;
 }
 
-// Create all dwarf planets
+// Create all dwarf planets (Pluto only, using astronomy-engine)
 function createDwarfPlanets() {
     dwarfPlanetData.forEach(data => {
         // Create dwarf planet mesh with solid color (no textures available)
@@ -862,50 +837,39 @@ function createDwarfPlanets() {
         
         const dwarfPlanet = new THREE.Mesh(geometry, material);
         
-        // Create a container for orbital movement with inclination
-        const orbitContainer = new THREE.Object3D();
-        const inclination = data.inclination || 0;
-        orbitContainer.rotation.x = (inclination * Math.PI) / 180; // Apply orbital inclination
-        scene.add(orbitContainer);
-        
-        // Position dwarf planet at its orbital distance
-        dwarfPlanet.position.x = data.orbitRadius;
-        orbitContainer.add(dwarfPlanet);
-        
         // Apply axial tilt
         if (data.axialTilt) {
             dwarfPlanet.rotation.z = (data.axialTilt * Math.PI) / 180;
         }
         
-        // Create and add dashed orbit path with inclination
-        const orbitPath = createDwarfOrbitPath(data.orbitRadius, inclination);
+        // Add dwarf planet directly to scene (position will be set in animate loop)
+        scene.add(dwarfPlanet);
+        
+        // Create real orbit path from astronomy-engine
+        const orbitPath = createRealOrbitPath(data.name);
         scene.add(orbitPath);
         
         // Add label to dwarf planet
         addLabel(dwarfPlanet, data.name, false, false);
         
-        // Create moons for dwarf planets that have them
-        if (data.name === 'Pluto' || data.name === 'Eris' || data.name === 'Haumea') {
+        // Create moons for Pluto
+        if (data.name === 'Pluto') {
             createMoons(dwarfPlanet, data.name);
         }
         
         // Store dwarf planet data for animation
+        // Note: no container needed since we set position directly
         dwarfPlanets.push({
             mesh: dwarfPlanet,
-            container: orbitContainer,
+            container: null, // No container - position set directly
             data: data
         });
     });
 }
 
-// Create all planets
+// Create all planets using real astronomy data
 function createPlanets() {
-    // Get real planet positions for the selected date
-    const realPositions = getRealPlanetPositions(selectedDate);
-    
     planetData.forEach(data => {
-        // Store initial angle from real position
-        data.initialAngle = realPositions[data.name] || 0;
         // Create planet mesh with texture
         const geometry = new THREE.SphereGeometry(data.size, 32, 32);
         
@@ -921,23 +885,16 @@ function createPlanets() {
         
         const planet = new THREE.Mesh(geometry, material);
         
-        // Create a container for orbital movement with inclination
-        const orbitContainer = new THREE.Object3D();
-        const inclination = data.inclination || 0;
-        orbitContainer.rotation.x = (inclination * Math.PI) / 180; // Apply orbital inclination
-        scene.add(orbitContainer);
-        
-        // Position planet at its orbital distance
-        planet.position.x = data.orbitRadius;
-        orbitContainer.add(planet);
-        
         // Apply axial tilt to planet
         if (data.axialTilt) {
             planet.rotation.z = (data.axialTilt * Math.PI) / 180;
         }
         
-        // Create and add orbit path with inclination
-        const orbitPath = createOrbitPath(data.orbitRadius, inclination);
+        // Add planet directly to scene (position will be set in animate loop)
+        scene.add(planet);
+        
+        // Create real orbit path from astronomy-engine
+        const orbitPath = createRealPlanetOrbitPath(data.name, 0x444444);
         scene.add(orbitPath);
         
         // Add visual effects based on planet type
@@ -951,10 +908,10 @@ function createPlanets() {
             createMoons(planet, data.name);
         }
         
-        // Store planet data for animation
+        // Store planet data for animation (no container - position set directly)
         planets.push({
             mesh: planet,
-            container: orbitContainer,
+            container: null,
             data: data
         });
     });
@@ -1322,6 +1279,58 @@ function createMoons(planet, planetName) {
     });
 }
 
+// Update moon positions using astronomy data where available
+function updateMoonPositions(simDate) {
+    // Get Jupiter's moons positions
+    let jupiterMoons = null;
+    try {
+        jupiterMoons = Astronomy.JupiterMoons(simDate);
+    } catch (e) {
+        // Fallback if JupiterMoons fails
+    }
+    
+    // Get Earth's moon position
+    let earthMoonAngle = null;
+    try {
+        const geoMoon = Astronomy.GeoMoon(simDate);
+        // Convert geocentric position to angle around Earth
+        earthMoonAngle = Math.atan2(geoMoon.y, geoMoon.x);
+    } catch (e) {
+        // Fallback if GeoMoon fails
+    }
+    
+    moons.forEach(moon => {
+        const moonName = moon.data.name;
+        
+        // Handle Jupiter's Galilean moons
+        if (jupiterMoons && (moonName === 'Io' || moonName === 'Europa' || moonName === 'Ganymede' || moonName === 'Callisto')) {
+            let jmoon;
+            switch (moonName) {
+                case 'Io': jmoon = jupiterMoons.io; break;
+                case 'Europa': jmoon = jupiterMoons.europa; break;
+                case 'Ganymede': jmoon = jupiterMoons.ganymede; break;
+                case 'Callisto': jmoon = jupiterMoons.callisto; break;
+            }
+            if (jmoon) {
+                // JupiterMoons returns positions relative to Jupiter
+                // Use x and y to determine angle around Jupiter
+                // Negate to match Three.js rotation direction
+                const angle = Math.atan2(jmoon.y, jmoon.x);
+                moon.container.rotation.y = -angle;
+            }
+        }
+        // Handle Earth's Moon
+        else if (moonName === 'Moon' && earthMoonAngle !== null) {
+            // Negate to match Three.js rotation direction
+            moon.container.rotation.y = -earthMoonAngle;
+        }
+        // Fallback for other moons - use simulation-based orbits
+        else {
+            moon.container.rotation.y = -simulationTime * moon.data.orbitSpeed * 0.5;
+        }
+    });
+}
+
 // Create smaller orbit path for moons
 function createMoonOrbitPath(radius) {
     const segments = 64;
@@ -1480,11 +1489,21 @@ function animate() {
     // Animate Sun effects (always animate for visual appeal)
     animateSun(simulationTime);
     
-    // Animate planets
+    // Get the current simulated date for astronomy calculations
+    const simDate = getSimulatedDate();
+    
+    // Animate planets using real astronomy data (direct positioning)
     planets.forEach(planet => {
-        // Orbit around the Sun with initial angle offset from real positions
-        const initialAngle = planet.data.initialAngle || 0;
-        planet.container.rotation.y = initialAngle + (simulationTime * planet.data.orbitSpeed * 0.1);
+        // Get real heliocentric position from astronomy-engine
+        try {
+            const vec = Astronomy.HelioVector(planet.data.name, simDate);
+            // Convert AU to visual units and apply coordinate transformation
+            planet.mesh.position.x = vec.x * AU_TO_VISUAL;
+            planet.mesh.position.y = vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y
+            planet.mesh.position.z = -vec.y * AU_TO_VISUAL; // Negate Y to match orbit path
+        } catch (e) {
+            // Fallback if astronomy calculation fails
+        }
         
         // Rotate on own axis
         if (!isPaused) {
@@ -1492,10 +1511,18 @@ function animate() {
         }
     });
     
-    // Animate dwarf planets
+    // Animate dwarf planets (Pluto) using real astronomy data
     dwarfPlanets.forEach(dwarfPlanet => {
-        // Orbit around the Sun
-        dwarfPlanet.container.rotation.y = simulationTime * dwarfPlanet.data.orbitSpeed * 0.1;
+        // Get real heliocentric position from astronomy-engine
+        try {
+            const vec = Astronomy.HelioVector(dwarfPlanet.data.name, simDate);
+            // Convert AU to visual units and apply coordinate transformation
+            dwarfPlanet.mesh.position.x = vec.x * AU_TO_VISUAL;
+            dwarfPlanet.mesh.position.y = vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y
+            dwarfPlanet.mesh.position.z = -vec.y * AU_TO_VISUAL; // Negate Y to match orbit path
+        } catch (e) {
+            // Fallback if astronomy calculation fails
+        }
         
         // Rotate on own axis
         if (!isPaused) {
@@ -1503,11 +1530,8 @@ function animate() {
         }
     });
     
-    // Animate moons
-    moons.forEach(moon => {
-        // Orbit around their parent planet
-        moon.container.rotation.y = simulationTime * moon.data.orbitSpeed * 0.5;
-    });
+    // Animate moons using astronomy data where available
+    updateMoonPositions(simDate);
     
     // Animate planet effects
     animatePlanetEffects(simulationTime);
@@ -1534,6 +1558,11 @@ function animate() {
     // Update date display
     updateDateDisplay();
     
+    // Update dynamic planet info if a planet is focused
+    if (focusedPlanet && focusedPlanet.data) {
+        updateDynamicPlanetInfo(focusedPlanet.data.name);
+    }
+    
     // Update lens flare effect
     updateLensFlare();
     
@@ -1544,35 +1573,39 @@ function animate() {
 
 // Create asteroid belt between Mars and Jupiter
 function createAsteroidBelt() {
-    const asteroidCount = 2000;
-    const innerRadius = 27;  // Just outside Mars
-    const outerRadius = 33;  // Just inside Jupiter
+    const asteroidCount = 4000;  // More asteroids for density
+    // Asteroid belt spans from just outside Mars (~1.7 AU) to just inside Jupiter (~4.5 AU)
+    const innerRadius = 1.7 * AU_TO_VISUAL;  // ~34 units (just outside Mars)
+    const outerRadius = 4.5 * AU_TO_VISUAL;  // ~90 units (just inside Jupiter)
     
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(asteroidCount * 3);
-    const sizes = new Float32Array(asteroidCount);
     
     for (let i = 0; i < asteroidCount; i++) {
         const radius = innerRadius + Math.random() * (outerRadius - innerRadius);
         const angle = Math.random() * Math.PI * 2;
-        const height = (Math.random() - 0.5) * 2; // Slight vertical spread
         
-        positions[i * 3] = Math.cos(angle) * radius;
+        // Position in ecliptic plane (same as planets)
+        const x = Math.cos(angle) * radius;
+        const z = -Math.sin(angle) * radius;  // Negative to match planet orbit direction
+        
+        // Add vertical spread for belt thickness (individual asteroid inclinations)
+        // Most asteroids are within ~10 degrees of ecliptic
+        const height = (Math.random() - 0.5) * radius * 0.15;  // ~8 degree spread
+        
+        positions[i * 3] = x;
         positions[i * 3 + 1] = height;
-        positions[i * 3 + 2] = Math.sin(angle) * radius;
-        
-        sizes[i] = 0.05 + Math.random() * 0.15;
+        positions[i * 3 + 2] = z;
     }
     
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
     
     const material = new THREE.PointsMaterial({
         color: 0x888888,
-        size: 0.15,
+        size: 0.2,  // Small, asteroid-like
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.8
+        opacity: 0.6
     });
     
     asteroidBelt = new THREE.Points(geometry, material);
@@ -1581,9 +1614,10 @@ function createAsteroidBelt() {
 
 // Create Kuiper belt beyond Neptune
 function createKuiperBelt() {
-    const objectCount = 3000;
-    const innerRadius = 70;   // Just outside Neptune
-    const outerRadius = 100;  // Extends far out
+    const objectCount = 6000;  // More objects for larger area
+    // Kuiper belt extends from Neptune (~30 AU) to about 50 AU
+    const innerRadius = 30 * AU_TO_VISUAL;   // ~600 units
+    const outerRadius = 50 * AU_TO_VISUAL;   // ~1000 units
     
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(objectCount * 3);
@@ -1591,21 +1625,27 @@ function createKuiperBelt() {
     for (let i = 0; i < objectCount; i++) {
         const radius = innerRadius + Math.random() * (outerRadius - innerRadius);
         const angle = Math.random() * Math.PI * 2;
-        const height = (Math.random() - 0.5) * 5; // More vertical spread than asteroid belt
         
-        positions[i * 3] = Math.cos(angle) * radius;
+        // Position in ecliptic plane (same as planets)
+        const x = Math.cos(angle) * radius;
+        const z = -Math.sin(angle) * radius;  // Negative to match planet orbit direction
+        
+        // Kuiper belt has more vertical spread than asteroid belt (~20 degree spread)
+        const height = (Math.random() - 0.5) * radius * 0.35;
+        
+        positions[i * 3] = x;
         positions[i * 3 + 1] = height;
-        positions[i * 3 + 2] = Math.sin(angle) * radius;
+        positions[i * 3 + 2] = z;
     }
     
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     
     const material = new THREE.PointsMaterial({
-        color: 0x99aacc,  // Slightly bluish/icy color
-        size: 0.2,
+        color: 0x8899bb,  // Slightly bluish/icy color
+        size: 0.5,  // Small but visible at distance
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.6
+        opacity: 0.5
     });
     
     kuiperBelt = new THREE.Points(geometry, material);
@@ -1745,6 +1785,50 @@ function showInfoPanel(data) {
     document.getElementById('planetGravity').textContent = data.info.gravity || 'N/A';
     document.getElementById('planetComposition').textContent = data.info.composition || 'N/A';
     document.getElementById('planetFeatures').textContent = data.info.features || 'N/A';
+    
+    // Update dynamic info immediately
+    updateDynamicPlanetInfo(data.name);
+}
+
+// Update dynamic planet info using astronomy-engine (distance and magnitude)
+function updateDynamicPlanetInfo(planetName) {
+    const simDate = getSimulatedDate();
+    
+    // List of bodies supported by astronomy-engine
+    const supportedBodies = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+    
+    if (!supportedBodies.includes(planetName)) {
+        // For dwarf planets not in astronomy-engine, show N/A
+        document.getElementById('planetCurrentDistance').textContent = 'N/A';
+        document.getElementById('planetMagnitude').textContent = 'N/A';
+        return;
+    }
+    
+    try {
+        // Get heliocentric distance (distance from Sun in AU)
+        const helioDistance = Astronomy.HelioDistance(planetName, simDate);
+        
+        // Convert AU to million km (1 AU = 149.598 million km)
+        const distanceInMillionKm = (helioDistance * 149.598).toFixed(1);
+        document.getElementById('planetCurrentDistance').textContent = `${distanceInMillionKm} M km (${helioDistance.toFixed(3)} AU)`;
+        
+        // Get visual magnitude (only for planets visible from Earth, not Earth itself)
+        if (planetName !== 'Earth') {
+            try {
+                const illum = Astronomy.Illumination(planetName, simDate);
+                const magnitude = illum.mag.toFixed(1);
+                const phaseAngle = illum.phase_angle.toFixed(1);
+                document.getElementById('planetMagnitude').textContent = `${magnitude} (phase: ${phaseAngle}°)`;
+            } catch (e) {
+                document.getElementById('planetMagnitude').textContent = 'N/A';
+            }
+        } else {
+            document.getElementById('planetMagnitude').textContent = 'N/A (observer)';
+        }
+    } catch (e) {
+        document.getElementById('planetCurrentDistance').textContent = 'N/A';
+        document.getElementById('planetMagnitude').textContent = 'N/A';
+    }
 }
 
 // Mini map functions
@@ -1771,23 +1855,13 @@ function updateMiniMap() {
     ctx.fillStyle = '#ffdd00';
     ctx.fill();
     
-    // Draw orbit lines and planets
+    // Draw planets (using real positions from astronomy-engine)
     planets.forEach(planet => {
-        const orbitRadius = planet.data.orbitRadius / scale;
-        
-        // Draw orbit
-        if (settings.showOrbits) {
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = Math.max(0.5, 0.5 * sizeMultiplier);
-            ctx.stroke();
-        }
-        
-        // Get planet position
-        const angle = planet.container.rotation.y;
-        const x = centerX + Math.cos(angle) * orbitRadius;
-        const y = centerY + Math.sin(angle) * orbitRadius;
+        // Get planet position from mesh (uses real astronomy position)
+        const meshPos = planet.mesh.position;
+        // Convert 3D position to 2D mini map (X, Z plane, ignoring Y height)
+        const x = centerX + (meshPos.x / scale);
+        const y = centerY + (meshPos.z / scale);
         
         // Draw planet
         ctx.beginPath();
@@ -1806,25 +1880,13 @@ function updateMiniMap() {
         }
     });
     
-    // Draw dwarf planets with dashed orbits
+    // Draw dwarf planets (Pluto uses real position, no circular orbit line)
     dwarfPlanets.forEach(dwarfPlanet => {
-        const orbitRadius = dwarfPlanet.data.orbitRadius / scale;
-        
-        // Draw dashed orbit (simplified - just smaller opacity)
-        if (settings.showOrbits) {
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(102, 102, 136, 0.3)';
-            ctx.lineWidth = Math.max(0.5, 0.5 * sizeMultiplier);
-            ctx.setLineDash([2, 2]);
-            ctx.stroke();
-            ctx.setLineDash([]); // Reset dash
-        }
-        
-        // Get dwarf planet position
-        const angle = dwarfPlanet.container.rotation.y;
-        const x = centerX + Math.cos(angle) * orbitRadius;
-        const y = centerY + Math.sin(angle) * orbitRadius;
+        // Get dwarf planet position from mesh (uses real astronomy position)
+        const meshPos = dwarfPlanet.mesh.position;
+        // Convert 3D position to 2D mini map (X, Z plane, ignoring Y height)
+        const x = centerX + (meshPos.x / scale);
+        const y = centerY + (meshPos.z / scale);
         
         // Draw dwarf planet (smaller)
         ctx.beginPath();
@@ -1862,20 +1924,57 @@ function updateMiniMap() {
 
 // Date simulation
 function updateDateDisplay() {
-    // Earth completes one orbit when simulationTime * 1 * 0.1 = 2*PI
-    // So one Earth year = 2*PI / 0.1 = ~62.8 simulation time units
-    const earthYearInSimTime = (2 * Math.PI) / 0.1;
-    const yearsElapsed = simulationTime / earthYearInSimTime;
-    
-    // Calculate simulated date based on selectedDate
-    const simDate = new Date(selectedDate);
-    // Add elapsed years
-    const totalDaysElapsed = yearsElapsed * 365.25;
-    simDate.setTime(simDate.getTime() + totalDaysElapsed * 24 * 60 * 60 * 1000);
+    const simDate = getSimulatedDate();
     
     // Format date
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     document.getElementById('simDate').textContent = simDate.toLocaleDateString('en-US', options);
+    
+    // Update moon phase
+    updateMoonPhaseDisplay(simDate);
+}
+
+// Update moon phase display using Astronomy.MoonPhase
+function updateMoonPhaseDisplay(simDate) {
+    try {
+        // Get moon phase (0-360 degrees)
+        const phase = Astronomy.MoonPhase(simDate);
+        
+        // Determine phase name and emoji based on phase angle
+        let phaseName, phaseIcon;
+        if (phase < 22.5 || phase >= 337.5) {
+            phaseName = 'New Moon';
+            phaseIcon = '🌑';
+        } else if (phase < 67.5) {
+            phaseName = 'Waxing Crescent';
+            phaseIcon = '🌒';
+        } else if (phase < 112.5) {
+            phaseName = 'First Quarter';
+            phaseIcon = '🌓';
+        } else if (phase < 157.5) {
+            phaseName = 'Waxing Gibbous';
+            phaseIcon = '🌔';
+        } else if (phase < 202.5) {
+            phaseName = 'Full Moon';
+            phaseIcon = '🌕';
+        } else if (phase < 247.5) {
+            phaseName = 'Waning Gibbous';
+            phaseIcon = '🌖';
+        } else if (phase < 292.5) {
+            phaseName = 'Last Quarter';
+            phaseIcon = '🌗';
+        } else {
+            phaseName = 'Waning Crescent';
+            phaseIcon = '🌘';
+        }
+        
+        document.getElementById('moonPhaseIcon').textContent = phaseIcon;
+        document.getElementById('moonPhaseName').textContent = phaseName;
+    } catch (e) {
+        // Fallback if MoonPhase fails
+        document.getElementById('moonPhaseIcon').textContent = '🌙';
+        document.getElementById('moonPhaseName').textContent = 'Unknown';
+    }
 }
 
 // Setup date picker for selecting simulation date
@@ -1895,9 +1994,7 @@ function setupDatePicker() {
             selectedDate = newDate;
             baseSimulationDate = newDate;
             simulationTime = 0; // Reset simulation time
-            
-            // Recalculate planet positions for new date
-            applyRealPlanetPositions(selectedDate);
+            // Planet positions will be recalculated automatically in animate() loop
         }
     });
     
@@ -1910,9 +2007,7 @@ function setupDatePicker() {
         selectedDate = today;
         baseSimulationDate = today;
         simulationTime = 0;
-        
-        // Recalculate planet positions for today
-        applyRealPlanetPositions(selectedDate);
+        // Planet positions will be recalculated automatically in animate() loop
     });
 }
 
@@ -2141,7 +2236,8 @@ function createVoyagerSpacecraft() {
     voyager1Group.add(rtg);
     
     // Position Voyager 1 beyond Kuiper Belt
-    voyager1Group.position.set(120, 15, 30);
+    // Position Voyager 1 at ~70 AU (1400 units) - beyond Pluto's orbit
+    voyager1Group.position.set(1200, 150, 300);
     voyager1Group.scale.setScalar(1.5);
     scene.add(voyager1Group);
     voyager1 = voyager1Group;
@@ -2178,7 +2274,8 @@ function createVoyagerSpacecraft() {
     voyager2Group.add(rtg2);
     
     // Position Voyager 2
-    voyager2Group.position.set(-95, -10, 85);
+    // Position Voyager 2 at ~65 AU (1300 units) - beyond Pluto's orbit
+    voyager2Group.position.set(-950, -100, 850);
     voyager2Group.scale.setScalar(1.5);
     scene.add(voyager2Group);
     voyager2 = voyager2Group;

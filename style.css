@@ -149,15 +149,47 @@ body {
     right: 20px;
     color: #fff;
     font-size: 14px;
-    padding: 10px 16px;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 8px;
+    padding: 14px 18px;
+    background: rgba(0, 0, 0, 0.75);
+    border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     z-index: 100;
+    min-width: 200px;
 }
 
 #simDate {
     font-weight: 300;
+    display: block;
+    margin-bottom: 10px;
+}
+
+#moonPhaseDisplay {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+#moonPhaseIcon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+#moonPhaseName {
+    opacity: 0.85;
+    flex: 1;
+}
+
+.date-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 #datePicker {
@@ -165,10 +197,10 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 4px;
     color: #fff;
-    padding: 4px 8px;
+    padding: 6px 10px;
     font-size: 12px;
-    margin-left: 10px;
     cursor: pointer;
+    flex: 1;
 }
 
 #datePicker::-webkit-calendar-picker-indicator {
@@ -191,9 +223,8 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 4px;
     color: #fff;
-    padding: 4px 8px;
+    padding: 6px 10px;
     font-size: 14px;
-    margin-left: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -291,6 +322,17 @@ body {
 .features-text {
     font-size: 13px !important;
     color: rgba(255, 255, 255, 0.85);
+}
+
+.info-item.dynamic-info {
+    background: rgba(100, 180, 255, 0.1);
+    padding: 6px 8px;
+    border-radius: 4px;
+    border-left: 2px solid rgba(100, 180, 255, 0.5);
+}
+
+.info-item.dynamic-info .info-label {
+    color: rgba(100, 180, 255, 0.9);
 }
 
 #unfocusBtn {
@@ -498,19 +540,35 @@ body {
         top: 10px;
         right: 10px;
         font-size: 12px;
-        padding: 8px 12px;
+        padding: 10px 12px;
+        min-width: 160px;
+    }
+    
+    #simDate {
+        margin-bottom: 8px;
+    }
+    
+    #moonPhaseDisplay {
+        margin-bottom: 8px;
+        padding: 6px 8px;
+    }
+    
+    #moonPhaseIcon {
+        font-size: 16px;
+    }
+    
+    .date-controls {
+        padding-top: 8px;
     }
     
     #datePicker {
         font-size: 11px;
-        padding: 3px 6px;
-        margin-left: 8px;
+        padding: 4px 6px;
     }
     
     #resetDateBtn {
-        padding: 3px 6px;
+        padding: 4px 8px;
         font-size: 12px;
-        margin-left: 4px;
     }
     
     /* Time controls - make more compact */
@@ -674,23 +732,38 @@ body {
     /* Date display */
     #dateDisplay {
         font-size: 11px;
-        padding: 6px 10px;
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
+        padding: 8px 10px;
+        min-width: 140px;
+    }
+    
+    #simDate {
+        margin-bottom: 6px;
+        font-size: 11px;
+    }
+    
+    #moonPhaseDisplay {
+        margin-bottom: 6px;
+        padding: 4px 6px;
+        font-size: 10px;
+    }
+    
+    #moonPhaseIcon {
+        font-size: 14px;
+    }
+    
+    .date-controls {
+        padding-top: 6px;
         gap: 4px;
     }
     
     #datePicker {
         font-size: 10px;
-        padding: 2px 4px;
-        margin-left: 4px;
+        padding: 3px 5px;
     }
     
     #resetDateBtn {
-        padding: 2px 5px;
+        padding: 3px 6px;
         font-size: 11px;
-        margin-left: 2px;
     }
     
     /* Info panel */
