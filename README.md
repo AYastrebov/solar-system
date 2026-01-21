@@ -10,9 +10,14 @@ An interactive 3D visualization of our Solar System built with Three.js. Explore
 - **Sun** with animated corona, solar flares, and particle effects
 - **8 Planets** with accurate orbital inclinations and axial tilts
   - Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune
-- **Moons** for Earth, Jupiter (Galilean moons), and Saturn
+- **5 Dwarf Planets** with dashed orbit lines and high orbital inclinations
+  - Ceres (asteroid belt), Pluto, Haumea, Makemake, Eris
+- **Moons** for planets and dwarf planets
+  - Earth (Moon), Mars (Phobos, Deimos), Jupiter (Galilean moons), Saturn (6 moons including Titan), Uranus (5 moons), Neptune (Triton, Nereid)
+  - Pluto (Charon), Haumea (Hi'iaka, Namaka), Eris (Dysnomia)
 - **Asteroid Belt** between Mars and Jupiter
 - **Kuiper Belt** beyond Neptune
+- **Voyager Spacecraft** (Voyager 1 and 2) at the edge of the solar system
 
 ### Visual Effects
 - Atmospheric glows and cloud layers for planets
@@ -73,11 +78,16 @@ python -m http.server 8000
 | Zoom | Scroll wheel |
 | Pan | Right-click + drag |
 | Focus on planet | Click on planet |
+| Focus planet 1-8 | Keys 1-8 |
+| Focus Sun | Key 0 |
+| Focus Voyager 1 | Key V |
+| Toggle music | Key M |
 | Pause/Play | Space or ⏸ button |
 | Speed up | → or ▶ button |
 | Slow down | ← or ◀ button |
 | Reverse time | ↓ or ⏪ button |
 | Forward time | ↑ or ⏩ button |
+| Unfocus | Escape |
 | Fullscreen | ⛶ button |
 
 ## Scientific Accuracy
@@ -98,7 +108,9 @@ The simulation uses real astronomical data where practical:
 solar-system/
 ├── index.html      # Main HTML file
 ├── style.css       # UI styling
-├── main.js         # Three.js scene and logic
+├── main.js         # Three.js scene and logic (~2200 lines)
+├── textures/       # 2K planet and moon textures
+├── audio/          # Background music tracks
 └── README.md       # Documentation
 ```
 
@@ -122,8 +134,8 @@ MIT License - feel free to use, modify, and distribute.
 ## Contributing
 
 Contributions welcome! Ideas for improvements:
-- Add more moons (Mars' Phobos/Deimos, etc.)
-- Planet textures for more realism
-- Dwarf planets (Pluto, Ceres, Eris)
-- Spacecraft trajectories (Voyager, etc.)
+- Higher resolution planet textures
+- Comet orbits and visualizations
+- Spacecraft trajectories (New Horizons, Cassini, etc.)
 - VR support
+- Exoplanet comparison mode

@@ -160,6 +160,53 @@ body {
     font-weight: 300;
 }
 
+#datePicker {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: #fff;
+    padding: 4px 8px;
+    font-size: 12px;
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+#datePicker::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+#datePicker:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+#datePicker:focus {
+    outline: none;
+    border-color: rgba(100, 180, 255, 0.8);
+}
+
+#resetDateBtn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: #fff;
+    padding: 4px 8px;
+    font-size: 14px;
+    margin-left: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#resetDateBtn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+#resetDateBtn:active {
+    transform: scale(0.95);
+}
+
 /* Planet Info Panel */
 #infoPanel {
     position: absolute;
@@ -454,6 +501,18 @@ body {
         padding: 8px 12px;
     }
     
+    #datePicker {
+        font-size: 11px;
+        padding: 3px 6px;
+        margin-left: 8px;
+    }
+    
+    #resetDateBtn {
+        padding: 3px 6px;
+        font-size: 12px;
+        margin-left: 4px;
+    }
+    
     /* Time controls - make more compact */
     #controls {
         bottom: 20px;
@@ -616,6 +675,22 @@ body {
     #dateDisplay {
         font-size: 11px;
         padding: 6px 10px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    #datePicker {
+        font-size: 10px;
+        padding: 2px 4px;
+        margin-left: 4px;
+    }
+    
+    #resetDateBtn {
+        padding: 2px 5px;
+        font-size: 11px;
+        margin-left: 2px;
     }
     
     /* Info panel */

@@ -14,6 +14,8 @@ let planetEffects = [];  // For animated planet effects
 let moons = [];
 let asteroidBelt;  // Asteroid belt particle system
 let kuiperBelt;    // Kuiper belt particle system
+let dwarfPlanets = [];  // Dwarf planets array
+let dwarfOrbitLines = [];  // Dwarf planet orbit lines
 let clock;
 let lensFlare;     // Sun lens flare effect
 let voyager1, voyager2;  // Voyager spacecraft
@@ -45,9 +47,34 @@ let settings = {
 // Orbit lines for toggle
 let orbitLines = [];
 
-// Simulation start date (J2000 epoch)
+// Simulation start date - use current date for real planet positions
 const J2000 = new Date('2000-01-01T12:00:00Z');
-const baseSimulationDate = new Date();
+let baseSimulationDate = new Date();
+let selectedDate = new Date(); // Date selected by user via date picker
+
+// Get real heliocentric positions for all planets using astronomy-engine
+function getRealPlanetPositions(date) {
+    const bodies = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
+    const positions = {};
+    bodies.forEach(body => {
+        // Get heliocentric position vector
+        const vec = Astronomy.HelioVector(body, date);
+        // Convert to ecliptic longitude (angle in radians)
+        positions[body] = Math.atan2(vec.y, vec.x);
+    });
+    return positions;
+}
+
+// Apply real planet positions to all planets
+function applyRealPlanetPositions(date) {
+    const positions = getRealPlanetPositions(date);
+    planets.forEach(planet => {
+        const name = planet.data.name;
+        if (positions[name] !== undefined) {
+            planet.data.initialAngle = positions[name];
+        }
+    });
+}
 
 // Planet data: name, color, size, orbitRadius, orbitSpeed, rotationSpeed, inclination (degrees), axialTilt, texture, info
 // Orbital speeds relative to Earth (1/orbital period in years)
@@ -143,10 +170,16 @@ const planetData = [
     }
 ];
 
-// Moon data for Earth, Jupiter and Saturn
+// Moon data for Earth, Mars, Jupiter, Saturn, Uranus, and Neptune
 const moonData = {
     'Earth': [
         { name: 'Moon', color: 0xaaaaaa, size: 0.27, orbitRadius: 2.5, orbitSpeed: 2.0, texture: 'textures/2k_moon.jpg' }
+    ],
+    'Mars': [
+        // Phobos - larger, closer, irregular grayish
+        { name: 'Phobos', color: 0x6b6b6b, size: 0.08, orbitRadius: 1.5, orbitSpeed: 5.0 },
+        // Deimos - smaller, farther, dark gray
+        { name: 'Deimos', color: 0x4a4a4a, size: 0.05, orbitRadius: 2.2, orbitSpeed: 3.0 }
     ],
     'Jupiter': [
         { name: 'Io', color: 0xffff66, size: 0.3, orbitRadius: 4, orbitSpeed: 3.5 },
@@ -155,13 +188,105 @@ const moonData = {
         { name: 'Callisto', color: 0x4a4a4a, size: 0.35, orbitRadius: 8, orbitSpeed: 1.2 }
     ],
     'Saturn': [
-        // Ordered by distance: Mimas < Enceladus < Rhea < Titan
+        // Ordered by distance: Mimas < Enceladus < Tethys < Dione < Rhea < Titan
         { name: 'Mimas', color: 0xa9a9a9, size: 0.12, orbitRadius: 3.2, orbitSpeed: 5.0 },
         { name: 'Enceladus', color: 0xfffafa, size: 0.15, orbitRadius: 4, orbitSpeed: 3.5 },
-        { name: 'Rhea', color: 0xdcdcdc, size: 0.2, orbitRadius: 5.5, orbitSpeed: 2.0 },
+        // Tethys - icy moon
+        { name: 'Tethys', color: 0xf0f0f0, size: 0.18, orbitRadius: 4.6, orbitSpeed: 3.0 },
+        // Dione - icy with bright ice cliffs
+        { name: 'Dione', color: 0xe8e8e8, size: 0.19, orbitRadius: 5.1, orbitSpeed: 2.5 },
+        { name: 'Rhea', color: 0xdcdcdc, size: 0.2, orbitRadius: 5.8, orbitSpeed: 2.0 },
         { name: 'Titan', color: 0xdaa520, size: 0.4, orbitRadius: 7.5, orbitSpeed: 1.0 }
+    ],
+    'Uranus': [
+        // Ordered by distance: Miranda < Ariel < Umbriel < Titania < Oberon
+        // Miranda - smallest, closest
+        { name: 'Miranda', color: 0xc0c0c0, size: 0.1, orbitRadius: 2.8, orbitSpeed: 4.0 },
+        // Ariel - icy white
+        { name: 'Ariel', color: 0xf5f5f5, size: 0.18, orbitRadius: 3.5, orbitSpeed: 3.2 },
+        // Umbriel - dark, carbon-rich
+        { name: 'Umbriel', color: 0x4a4a4a, size: 0.18, orbitRadius: 4.2, orbitSpeed: 2.6 },
+        // Titania - largest, icy gray
+        { name: 'Titania', color: 0xb0b0b0, size: 0.25, orbitRadius: 5.0, orbitSpeed: 2.0 },
+        // Oberon - outermost, dark with craters
+        { name: 'Oberon', color: 0x606060, size: 0.24, orbitRadius: 5.8, orbitSpeed: 1.5 }
+    ],
+    'Neptune': [
+        // Triton - large retrograde moon, pinkish-white
+        { name: 'Triton', color: 0xffd4d4, size: 0.3, orbitRadius: 3.5, orbitSpeed: -2.0 },
+        // Nereid - small, distant
+        { name: 'Nereid', color: 0x888888, size: 0.08, orbitRadius: 5.5, orbitSpeed: 0.5 }
+    ],
+    // Dwarf planet moons
+    'Pluto': [
+        // Charon - large moon, tidally locked, half the size of Pluto
+        { name: 'Charon', color: 0x9a9a9a, size: 0.18, orbitRadius: 1.2, orbitSpeed: 1.5 }
+    ],
+    'Eris': [
+        // Dysnomia - small moon
+        { name: 'Dysnomia', color: 0x7a7a7a, size: 0.08, orbitRadius: 1.0, orbitSpeed: 1.0 }
+    ],
+    'Haumea': [
+        // Hi'iaka - larger outer moon
+        { name: "Hi'iaka", color: 0xaaaaaa, size: 0.06, orbitRadius: 1.2, orbitSpeed: 1.2 },
+        // Namaka - smaller inner moon
+        { name: 'Namaka', color: 0x888888, size: 0.04, orbitRadius: 0.8, orbitSpeed: 2.0 }
     ]
 };
+
+// Dwarf planet data: name, color, size, orbitRadius, orbitSpeed, rotationSpeed, inclination (degrees), axialTilt, info
+const dwarfPlanetData = [
+    {
+        name: 'Ceres', color: 0x8a8a7a, size: 0.25, orbitRadius: 30, orbitSpeed: 0.21, rotationSpeed: 0.025,
+        inclination: 10.6, axialTilt: 4.0,
+        info: {
+            diameter: '940 km', distance: '414 million km', dayLength: '9.1 hours', yearLength: '4.6 Earth years',
+            moons: 0, type: 'Dwarf Planet', temperature: '-105°C average', gravity: '0.28 m/s²',
+            composition: 'Rock and ice, possible subsurface ocean',
+            features: 'Largest object in asteroid belt, bright salt deposits (Occator Crater), possible cryovolcanism.'
+        }
+    },
+    {
+        name: 'Pluto', color: 0xc9b89d, size: 0.35, orbitRadius: 75, orbitSpeed: 0.004, rotationSpeed: 0.015,
+        inclination: 17.2, axialTilt: 122.5,
+        info: {
+            diameter: '2,377 km', distance: '5.9 billion km', dayLength: '6.4 Earth days (retrograde)', yearLength: '248 Earth years',
+            moons: 5, type: 'Dwarf Planet', temperature: '-230°C average', gravity: '0.62 m/s²',
+            composition: 'Nitrogen ice, water ice, rock',
+            features: 'Heart-shaped nitrogen glacier (Tombaugh Regio), thin atmosphere, 5 moons including large Charon.'
+        }
+    },
+    {
+        name: 'Haumea', color: 0xf0f0f0, size: 0.28, orbitRadius: 82, orbitSpeed: 0.0035, rotationSpeed: 0.1,
+        inclination: 28.2, axialTilt: 126.0,
+        info: {
+            diameter: '1,632 km (avg)', distance: '6.5 billion km', dayLength: '3.9 hours', yearLength: '285 Earth years',
+            moons: 2, type: 'Dwarf Planet', temperature: '-241°C', gravity: '0.44 m/s²',
+            composition: 'Crystalline water ice surface, rocky interior',
+            features: 'Elongated ellipsoid shape, fastest rotation of any large body, has rings and two moons.'
+        }
+    },
+    {
+        name: 'Makemake', color: 0xd4a574, size: 0.3, orbitRadius: 88, orbitSpeed: 0.003, rotationSpeed: 0.02,
+        inclination: 29.0, axialTilt: 0.0,
+        info: {
+            diameter: '1,430 km', distance: '6.8 billion km', dayLength: '22.5 hours', yearLength: '306 Earth years',
+            moons: 1, type: 'Dwarf Planet', temperature: '-243°C', gravity: '0.5 m/s²',
+            composition: 'Methane, ethane, nitrogen ices',
+            features: 'Extremely bright surface, reddish-brown color from tholins, one known moon (MK2).'
+        }
+    },
+    {
+        name: 'Eris', color: 0xe8e8e8, size: 0.35, orbitRadius: 100, orbitSpeed: 0.0017, rotationSpeed: 0.018,
+        inclination: 44.0, axialTilt: 78.0,
+        info: {
+            diameter: '2,326 km', distance: '10.1 billion km', dayLength: '25.9 hours', yearLength: '559 Earth years',
+            moons: 1, type: 'Dwarf Planet', temperature: '-243°C', gravity: '0.82 m/s²',
+            composition: 'Methane ice surface, rocky interior',
+            features: 'Most massive known dwarf planet, highly reflective surface, one moon (Dysnomia), extreme orbit.'
+        }
+    }
+];
 
 // Initialize the scene
 function init() {
@@ -216,6 +341,9 @@ function init() {
     // Create planets with orbits
     createPlanets();
     
+    // Create dwarf planets with orbits
+    createDwarfPlanets();
+    
     // Create asteroid belt
     createAsteroidBelt();
     
@@ -252,6 +380,9 @@ function init() {
     
     // Setup settings panel
     setupSettingsPanel();
+    
+    // Setup date picker
+    setupDatePicker();
     
     // Setup fullscreen
     setupFullscreen();
@@ -683,9 +814,98 @@ function createOrbitPath(radius, inclination = 0) {
     return orbit;
 }
 
+// Create dashed orbit path for dwarf planets
+function createDwarfOrbitPath(radius, inclination = 0) {
+    const segments = 128;
+    const orbitGeometry = new THREE.BufferGeometry();
+    const positions = new Float32Array((segments + 1) * 3);
+    
+    const incRad = (inclination * Math.PI) / 180; // Convert to radians
+    
+    for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        // Apply inclination rotation around X axis
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = z * Math.sin(incRad);
+        positions[i * 3 + 2] = z * Math.cos(incRad);
+    }
+    
+    orbitGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    const orbitMaterial = new THREE.LineDashedMaterial({
+        color: 0x666688,
+        transparent: true,
+        opacity: 0.4,
+        dashSize: 2,
+        gapSize: 1
+    });
+    
+    const orbit = new THREE.Line(orbitGeometry, orbitMaterial);
+    orbit.computeLineDistances(); // Required for dashed lines
+    dwarfOrbitLines.push(orbit); // Store for toggling
+    return orbit;
+}
+
+// Create all dwarf planets
+function createDwarfPlanets() {
+    dwarfPlanetData.forEach(data => {
+        // Create dwarf planet mesh with solid color (no textures available)
+        const geometry = new THREE.SphereGeometry(data.size, 24, 24);
+        
+        const material = new THREE.MeshStandardMaterial({
+            color: data.color,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        
+        const dwarfPlanet = new THREE.Mesh(geometry, material);
+        
+        // Create a container for orbital movement with inclination
+        const orbitContainer = new THREE.Object3D();
+        const inclination = data.inclination || 0;
+        orbitContainer.rotation.x = (inclination * Math.PI) / 180; // Apply orbital inclination
+        scene.add(orbitContainer);
+        
+        // Position dwarf planet at its orbital distance
+        dwarfPlanet.position.x = data.orbitRadius;
+        orbitContainer.add(dwarfPlanet);
+        
+        // Apply axial tilt
+        if (data.axialTilt) {
+            dwarfPlanet.rotation.z = (data.axialTilt * Math.PI) / 180;
+        }
+        
+        // Create and add dashed orbit path with inclination
+        const orbitPath = createDwarfOrbitPath(data.orbitRadius, inclination);
+        scene.add(orbitPath);
+        
+        // Add label to dwarf planet
+        addLabel(dwarfPlanet, data.name, false, false);
+        
+        // Create moons for dwarf planets that have them
+        if (data.name === 'Pluto' || data.name === 'Eris' || data.name === 'Haumea') {
+            createMoons(dwarfPlanet, data.name);
+        }
+        
+        // Store dwarf planet data for animation
+        dwarfPlanets.push({
+            mesh: dwarfPlanet,
+            container: orbitContainer,
+            data: data
+        });
+    });
+}
+
 // Create all planets
 function createPlanets() {
+    // Get real planet positions for the selected date
+    const realPositions = getRealPlanetPositions(selectedDate);
+    
     planetData.forEach(data => {
+        // Store initial angle from real position
+        data.initialAngle = realPositions[data.name] || 0;
         // Create planet mesh with texture
         const geometry = new THREE.SphereGeometry(data.size, 32, 32);
         
@@ -726,8 +946,8 @@ function createPlanets() {
         // Add label to planet
         addLabel(planet, data.name, false, false);
         
-        // Add moons for Earth, Jupiter and Saturn
-        if (data.name === 'Earth' || data.name === 'Jupiter' || data.name === 'Saturn') {
+        // Add moons for Earth, Mars, Jupiter, Saturn, Uranus, and Neptune
+        if (data.name === 'Earth' || data.name === 'Mars' || data.name === 'Jupiter' || data.name === 'Saturn' || data.name === 'Uranus' || data.name === 'Neptune') {
             createMoons(planet, data.name);
         }
         
@@ -1262,12 +1482,24 @@ function animate() {
     
     // Animate planets
     planets.forEach(planet => {
-        // Orbit around the Sun
-        planet.container.rotation.y = simulationTime * planet.data.orbitSpeed * 0.1;
+        // Orbit around the Sun with initial angle offset from real positions
+        const initialAngle = planet.data.initialAngle || 0;
+        planet.container.rotation.y = initialAngle + (simulationTime * planet.data.orbitSpeed * 0.1);
         
         // Rotate on own axis
         if (!isPaused) {
             planet.mesh.rotation.y += planet.data.rotationSpeed * timeScale;
+        }
+    });
+    
+    // Animate dwarf planets
+    dwarfPlanets.forEach(dwarfPlanet => {
+        // Orbit around the Sun
+        dwarfPlanet.container.rotation.y = simulationTime * dwarfPlanet.data.orbitSpeed * 0.1;
+        
+        // Rotate on own axis
+        if (!isPaused) {
+            dwarfPlanet.mesh.rotation.y += dwarfPlanet.data.rotationSpeed * timeScale;
         }
     });
     
@@ -1422,22 +1654,25 @@ function onPlanetClick(event) {
     // Update raycaster
     raycaster.setFromCamera(mouse, camera);
     
-    // Get all planet meshes
+    // Get all planet and dwarf planet meshes
     const planetMeshes = planets.map(p => p.mesh);
+    const dwarfPlanetMeshes = dwarfPlanets.map(p => p.mesh);
+    const allMeshes = [...planetMeshes, ...dwarfPlanetMeshes];
     
     // Check for intersections
-    const intersects = raycaster.intersectObjects(planetMeshes, true);
+    const intersects = raycaster.intersectObjects(allMeshes, true);
     
     if (intersects.length > 0) {
         // Find which planet was clicked
         let clickedMesh = intersects[0].object;
         
         // Traverse up to find the actual planet mesh
-        while (clickedMesh.parent && !planets.find(p => p.mesh === clickedMesh)) {
+        const allPlanets = [...planets, ...dwarfPlanets];
+        while (clickedMesh.parent && !allPlanets.find(p => p.mesh === clickedMesh)) {
             clickedMesh = clickedMesh.parent;
         }
         
-        const planetObj = planets.find(p => p.mesh === clickedMesh);
+        const planetObj = allPlanets.find(p => p.mesh === clickedMesh);
         if (planetObj) {
             focusOnPlanet(planetObj);
         }
@@ -1571,6 +1806,43 @@ function updateMiniMap() {
         }
     });
     
+    // Draw dwarf planets with dashed orbits
+    dwarfPlanets.forEach(dwarfPlanet => {
+        const orbitRadius = dwarfPlanet.data.orbitRadius / scale;
+        
+        // Draw dashed orbit (simplified - just smaller opacity)
+        if (settings.showOrbits) {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(102, 102, 136, 0.3)';
+            ctx.lineWidth = Math.max(0.5, 0.5 * sizeMultiplier);
+            ctx.setLineDash([2, 2]);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset dash
+        }
+        
+        // Get dwarf planet position
+        const angle = dwarfPlanet.container.rotation.y;
+        const x = centerX + Math.cos(angle) * orbitRadius;
+        const y = centerY + Math.sin(angle) * orbitRadius;
+        
+        // Draw dwarf planet (smaller)
+        ctx.beginPath();
+        const size = Math.max(1, dwarfPlanet.data.size * 1.2 * sizeMultiplier);
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fillStyle = '#' + dwarfPlanet.data.color.toString(16).padStart(6, '0');
+        ctx.fill();
+        
+        // Highlight focused dwarf planet
+        if (focusedPlanet === dwarfPlanet) {
+            ctx.beginPath();
+            ctx.arc(x, y, size + 2 * sizeMultiplier, 0, Math.PI * 2);
+            ctx.strokeStyle = '#88ccff';
+            ctx.lineWidth = Math.max(1, 2 * sizeMultiplier);
+            ctx.stroke();
+        }
+    });
+    
     // Draw camera position indicator
     const camDist = Math.sqrt(camera.position.x ** 2 + camera.position.z ** 2) / scale;
     const camAngle = Math.atan2(camera.position.z, camera.position.x);
@@ -1595,15 +1867,53 @@ function updateDateDisplay() {
     const earthYearInSimTime = (2 * Math.PI) / 0.1;
     const yearsElapsed = simulationTime / earthYearInSimTime;
     
-    // Calculate simulated date
-    const simDate = new Date(baseSimulationDate);
-    simDate.setFullYear(simDate.getFullYear() + Math.floor(yearsElapsed));
-    const dayOfYear = (yearsElapsed % 1) * 365;
-    simDate.setDate(simDate.getDate() + Math.floor(dayOfYear));
+    // Calculate simulated date based on selectedDate
+    const simDate = new Date(selectedDate);
+    // Add elapsed years
+    const totalDaysElapsed = yearsElapsed * 365.25;
+    simDate.setTime(simDate.getTime() + totalDaysElapsed * 24 * 60 * 60 * 1000);
     
     // Format date
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     document.getElementById('simDate').textContent = simDate.toLocaleDateString('en-US', options);
+}
+
+// Setup date picker for selecting simulation date
+function setupDatePicker() {
+    const datePicker = document.getElementById('datePicker');
+    const resetBtn = document.getElementById('resetDateBtn');
+    
+    // Initialize date picker with today's date
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    datePicker.value = todayStr;
+    
+    // Handle date picker change
+    datePicker.addEventListener('change', (e) => {
+        const newDate = new Date(e.target.value + 'T12:00:00Z');
+        if (!isNaN(newDate.getTime())) {
+            selectedDate = newDate;
+            baseSimulationDate = newDate;
+            simulationTime = 0; // Reset simulation time
+            
+            // Recalculate planet positions for new date
+            applyRealPlanetPositions(selectedDate);
+        }
+    });
+    
+    // Handle reset button click
+    resetBtn.addEventListener('click', () => {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        datePicker.value = todayStr;
+        
+        selectedDate = today;
+        baseSimulationDate = today;
+        simulationTime = 0;
+        
+        // Recalculate planet positions for today
+        applyRealPlanetPositions(selectedDate);
+    });
 }
 
 // Settings panel
@@ -1655,6 +1965,9 @@ function toggleLabels(show) {
 
 function toggleOrbits(show) {
     orbitLines.forEach(orbit => {
+        orbit.visible = show;
+    });
+    dwarfOrbitLines.forEach(orbit => {
         orbit.visible = show;
     });
 }
