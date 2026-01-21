@@ -169,40 +169,40 @@ const moonData = {
         { name: 'Deimos', color: 0x4a4a4a, size: 0.05, orbitRadius: 2.2, orbitSpeed: 3.0 }
     ],
     'Jupiter': [
-        { name: 'Io', color: 0xffff66, size: 0.3, orbitRadius: 4, orbitSpeed: 3.5 },
-        { name: 'Europa', color: 0xf5f5dc, size: 0.25, orbitRadius: 5.2, orbitSpeed: 2.8 },
-        { name: 'Ganymede', color: 0x8b8989, size: 0.4, orbitRadius: 6.5, orbitSpeed: 2.0 },
-        { name: 'Callisto', color: 0x4a4a4a, size: 0.35, orbitRadius: 8, orbitSpeed: 1.2 }
+        { name: 'Io', color: 0xffff66, size: 0.3, orbitRadius: 7, orbitSpeed: 3.5 },
+        { name: 'Europa', color: 0xf5f5dc, size: 0.25, orbitRadius: 8.5, orbitSpeed: 2.8 },
+        { name: 'Ganymede', color: 0x8b8989, size: 0.4, orbitRadius: 10, orbitSpeed: 2.0 },
+        { name: 'Callisto', color: 0x4a4a4a, size: 0.35, orbitRadius: 12, orbitSpeed: 1.2 }
     ],
     'Saturn': [
         // Ordered by distance: Mimas < Enceladus < Tethys < Dione < Rhea < Titan
-        { name: 'Mimas', color: 0xa9a9a9, size: 0.12, orbitRadius: 3.2, orbitSpeed: 5.0 },
-        { name: 'Enceladus', color: 0xfffafa, size: 0.15, orbitRadius: 4, orbitSpeed: 3.5 },
+        { name: 'Mimas', color: 0xa9a9a9, size: 0.12, orbitRadius: 6, orbitSpeed: 5.0 },
+        { name: 'Enceladus', color: 0xfffafa, size: 0.15, orbitRadius: 7, orbitSpeed: 3.5 },
         // Tethys - icy moon
-        { name: 'Tethys', color: 0xf0f0f0, size: 0.18, orbitRadius: 4.6, orbitSpeed: 3.0 },
+        { name: 'Tethys', color: 0xf0f0f0, size: 0.18, orbitRadius: 7.8, orbitSpeed: 3.0 },
         // Dione - icy with bright ice cliffs
-        { name: 'Dione', color: 0xe8e8e8, size: 0.19, orbitRadius: 5.1, orbitSpeed: 2.5 },
-        { name: 'Rhea', color: 0xdcdcdc, size: 0.2, orbitRadius: 5.8, orbitSpeed: 2.0 },
-        { name: 'Titan', color: 0xdaa520, size: 0.4, orbitRadius: 7.5, orbitSpeed: 1.0 }
+        { name: 'Dione', color: 0xe8e8e8, size: 0.19, orbitRadius: 8.5, orbitSpeed: 2.5 },
+        { name: 'Rhea', color: 0xdcdcdc, size: 0.2, orbitRadius: 9.5, orbitSpeed: 2.0 },
+        { name: 'Titan', color: 0xdaa520, size: 0.4, orbitRadius: 11, orbitSpeed: 1.0 }
     ],
     'Uranus': [
         // Ordered by distance: Miranda < Ariel < Umbriel < Titania < Oberon
         // Miranda - smallest, closest
-        { name: 'Miranda', color: 0xc0c0c0, size: 0.1, orbitRadius: 2.8, orbitSpeed: 4.0 },
+        { name: 'Miranda', color: 0xc0c0c0, size: 0.1, orbitRadius: 3.5, orbitSpeed: 4.0 },
         // Ariel - icy white
-        { name: 'Ariel', color: 0xf5f5f5, size: 0.18, orbitRadius: 3.5, orbitSpeed: 3.2 },
+        { name: 'Ariel', color: 0xf5f5f5, size: 0.18, orbitRadius: 4.2, orbitSpeed: 3.2 },
         // Umbriel - dark, carbon-rich
-        { name: 'Umbriel', color: 0x4a4a4a, size: 0.18, orbitRadius: 4.2, orbitSpeed: 2.6 },
+        { name: 'Umbriel', color: 0x4a4a4a, size: 0.18, orbitRadius: 5.0, orbitSpeed: 2.6 },
         // Titania - largest, icy gray
-        { name: 'Titania', color: 0xb0b0b0, size: 0.25, orbitRadius: 5.0, orbitSpeed: 2.0 },
+        { name: 'Titania', color: 0xb0b0b0, size: 0.25, orbitRadius: 6.0, orbitSpeed: 2.0 },
         // Oberon - outermost, dark with craters
-        { name: 'Oberon', color: 0x606060, size: 0.24, orbitRadius: 5.8, orbitSpeed: 1.5 }
+        { name: 'Oberon', color: 0x606060, size: 0.24, orbitRadius: 7.0, orbitSpeed: 1.5 }
     ],
     'Neptune': [
         // Triton - large retrograde moon, pinkish-white
-        { name: 'Triton', color: 0xffd4d4, size: 0.3, orbitRadius: 3.5, orbitSpeed: -2.0 },
+        { name: 'Triton', color: 0xffd4d4, size: 0.3, orbitRadius: 4.0, orbitSpeed: -2.0 },
         // Nereid - small, distant
-        { name: 'Nereid', color: 0x888888, size: 0.08, orbitRadius: 5.5, orbitSpeed: 0.5 }
+        { name: 'Nereid', color: 0x888888, size: 0.08, orbitRadius: 6.5, orbitSpeed: 0.5 }
     ],
     // Dwarf planet moons
     'Pluto': [
@@ -745,10 +745,13 @@ function createRealPlanetOrbitPath(bodyName, color = 0x444444) {
         
         try {
             const vec = Astronomy.HelioVector(bodyName, sampleDate);
+            // HelioVector returns J2000 Equatorial (EQJ) coordinates, convert to ecliptic
+            const ecl = Astronomy.Ecliptic(vec);
             // Convert AU to visual units and apply coordinate transformation
-            positions[i * 3] = vec.x * AU_TO_VISUAL;
-            positions[i * 3 + 1] = vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y
-            positions[i * 3 + 2] = -vec.y * AU_TO_VISUAL; // Negate Y to match rotation direction
+            // Ecliptic X,Y plane -> Three.js X,Z plane (Y is up)
+            positions[i * 3] = ecl.vec.x * AU_TO_VISUAL;
+            positions[i * 3 + 1] = ecl.vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y (height above orbital plane)
+            positions[i * 3 + 2] = -ecl.vec.y * AU_TO_VISUAL; // Ecliptic Y -> Visual -Z
         } catch (e) {
             positions[i * 3] = 0;
             positions[i * 3 + 1] = 0;
@@ -793,12 +796,13 @@ function createRealOrbitPath(bodyName) {
         
         try {
             const vec = Astronomy.HelioVector(bodyName, sampleDate);
+            // HelioVector returns J2000 Equatorial (EQJ) coordinates, convert to ecliptic
+            const ecl = Astronomy.Ecliptic(vec);
             // Convert AU to visual units and apply coordinate transformation
-            // Astronomy: X,Y ecliptic -> Three.js: X,Z plane (Y is up)
-            // Negate to match the planet rotation direction
-            positions[i * 3] = vec.x * AU_TO_VISUAL;
-            positions[i * 3 + 1] = vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y (height above ecliptic)
-            positions[i * 3 + 2] = -vec.y * AU_TO_VISUAL; // Negate Y to match rotation direction
+            // Ecliptic X,Y plane -> Three.js X,Z plane (Y is up)
+            positions[i * 3] = ecl.vec.x * AU_TO_VISUAL;
+            positions[i * 3 + 1] = ecl.vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y (height above orbital plane)
+            positions[i * 3 + 2] = -ecl.vec.y * AU_TO_VISUAL; // Ecliptic Y -> Visual -Z
         } catch (e) {
             // Fallback if astronomy calculation fails
             positions[i * 3] = 0;
@@ -1293,8 +1297,10 @@ function updateMoonPositions(simDate) {
     let earthMoonAngle = null;
     try {
         const geoMoon = Astronomy.GeoMoon(simDate);
-        // Convert geocentric position to angle around Earth
-        earthMoonAngle = Math.atan2(geoMoon.y, geoMoon.x);
+        // GeoMoon returns J2000 Equatorial (EQJ) coordinates, convert to ecliptic
+        const ecl = Astronomy.Ecliptic(geoMoon);
+        // Convert geocentric ecliptic position to angle around Earth
+        earthMoonAngle = Math.atan2(ecl.vec.y, ecl.vec.x);
     } catch (e) {
         // Fallback if GeoMoon fails
     }
@@ -1312,10 +1318,12 @@ function updateMoonPositions(simDate) {
                 case 'Callisto': jmoon = jupiterMoons.callisto; break;
             }
             if (jmoon) {
-                // JupiterMoons returns positions relative to Jupiter
-                // Use x and y to determine angle around Jupiter
+                // JupiterMoons returns positions relative to Jupiter in J2000 Equatorial (EQJ) coordinates
+                // Convert to ecliptic coordinates for accurate orbital plane
+                const ecl = Astronomy.Ecliptic(jmoon);
+                // Use ecliptic x and y to determine angle around Jupiter
                 // Negate to match Three.js rotation direction
-                const angle = Math.atan2(jmoon.y, jmoon.x);
+                const angle = Math.atan2(ecl.vec.y, ecl.vec.x);
                 moon.container.rotation.y = -angle;
             }
         }
@@ -1497,10 +1505,13 @@ function animate() {
         // Get real heliocentric position from astronomy-engine
         try {
             const vec = Astronomy.HelioVector(planet.data.name, simDate);
+            // HelioVector returns J2000 Equatorial (EQJ) coordinates, convert to ecliptic
+            const ecl = Astronomy.Ecliptic(vec);
             // Convert AU to visual units and apply coordinate transformation
-            planet.mesh.position.x = vec.x * AU_TO_VISUAL;
-            planet.mesh.position.y = vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y
-            planet.mesh.position.z = -vec.y * AU_TO_VISUAL; // Negate Y to match orbit path
+            // Ecliptic X,Y plane -> Three.js X,Z plane (Y is up)
+            planet.mesh.position.x = ecl.vec.x * AU_TO_VISUAL;
+            planet.mesh.position.y = ecl.vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y (height above orbital plane)
+            planet.mesh.position.z = -ecl.vec.y * AU_TO_VISUAL; // Ecliptic Y -> Visual -Z
         } catch (e) {
             // Fallback if astronomy calculation fails
         }
@@ -1516,10 +1527,13 @@ function animate() {
         // Get real heliocentric position from astronomy-engine
         try {
             const vec = Astronomy.HelioVector(dwarfPlanet.data.name, simDate);
+            // HelioVector returns J2000 Equatorial (EQJ) coordinates, convert to ecliptic
+            const ecl = Astronomy.Ecliptic(vec);
             // Convert AU to visual units and apply coordinate transformation
-            dwarfPlanet.mesh.position.x = vec.x * AU_TO_VISUAL;
-            dwarfPlanet.mesh.position.y = vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y
-            dwarfPlanet.mesh.position.z = -vec.y * AU_TO_VISUAL; // Negate Y to match orbit path
+            // Ecliptic X,Y plane -> Three.js X,Z plane (Y is up)
+            dwarfPlanet.mesh.position.x = ecl.vec.x * AU_TO_VISUAL;
+            dwarfPlanet.mesh.position.y = ecl.vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y (height above orbital plane)
+            dwarfPlanet.mesh.position.z = -ecl.vec.y * AU_TO_VISUAL; // Ecliptic Y -> Visual -Z
         } catch (e) {
             // Fallback if astronomy calculation fails
         }

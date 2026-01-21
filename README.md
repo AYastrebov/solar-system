@@ -109,12 +109,12 @@ python -m http.server 8000
 
 The simulation uses **astronomy-engine** for real astronomical calculations:
 
-- **Planetary positions** - Calculated using `Astronomy.HelioVector()` for each frame
-- **Elliptical orbits** - True orbital paths sampled from astronomy-engine
-- **Moon positions** - Earth's Moon via `Astronomy.GeoMoon()`, Jupiter's moons via `Astronomy.JupiterMoons()`
+- **Planetary positions** - Calculated using `Astronomy.HelioVector()` and converted to ecliptic coordinates via `Astronomy.Ecliptic()` for accurate orbital plane visualization
+- **Elliptical orbits** - True orbital paths sampled from astronomy-engine in ecliptic coordinates
+- **Moon positions** - Earth's Moon via `Astronomy.GeoMoon()`, Jupiter's moons via `Astronomy.JupiterMoons()`, both converted to ecliptic
 - **Moon phases** - Calculated using `Astronomy.MoonPhase()`
 - **Visual magnitude** - Planet brightness via `Astronomy.Illumination()`
-- **Orbital inclinations** - Included in the 3D heliocentric vectors
+- **Orbital inclinations** - Accurate ecliptic inclinations (planets orbit in the true orbital plane)
 - **Axial tilts** - Accurate values (Earth 23.4°, Uranus 97.8°)
 
 ### Scale Notes
