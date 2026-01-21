@@ -1837,10 +1837,11 @@ function updateMiniMap() {
     const ctx = canvas.getContext('2d');
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    // Dynamic scale based on canvas size (base scale for 180px canvas)
-    const baseSize = 180;
-    const scaleFactor = canvas.width / baseSize;
-    const scale = 1.3 / scaleFactor; // Adjust scale for smaller canvas
+    // Scale to fit outer solar system (Pluto at ~40 AU = 800 units)
+    // Canvas radius is ~85px, so scale = 800 / 80 = 10
+    const maxDistance = 50 * AU_TO_VISUAL; // ~50 AU to include Kuiper belt edge
+    const canvasRadius = (canvas.width / 2) - 5; // Leave small margin
+    const scale = maxDistance / canvasRadius;
     
     // Clear canvas
     ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
