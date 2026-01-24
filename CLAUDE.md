@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Interactive 3D Solar System visualization built with Three.js. Pure client-side application with no build system or npm dependencies.
+Interactive 3D Solar System visualization built with Three.js and astronomy-engine for accurate real-time planetary positions. Pure client-side application with no build system or npm dependencies.
 
 ## Development
 
@@ -19,46 +19,63 @@ python -m http.server 8000
 ## Architecture
 
 **Single-page app with three core files:**
-- `index.html` - DOM structure, CDN library imports (Three.js r128)
-- `main.js` - All application logic (~2000 lines)
+- `index.html` - DOM structure, CDN library imports (Three.js r128, astronomy-engine 2.1.19)
+- `main.js` - All application logic (~2450 lines)
 - `style.css` - UI styling and responsive design
 
 **main.js structure:**
-- Lines 1-165: Configuration objects (`planetData`, `moonData`, global state)
-- Lines 167-273: `init()` - Scene setup, calls all creation functions
-- Lines 276-407: Time controls, starfield, lighting
-- Lines 410-655: Sun creation with corona layers, flares, spikes
-- Lines 656-743: Orbit paths and planet mesh creation
-- Lines 744-1130: Planet effects (atmospheres, rings, clouds) and moon creation
-- Lines 1131-1250: `animate()` loop - updates positions, rotations, effects
-- Lines 1251-1383: Asteroid belt and Kuiper belt particle systems
-- Lines 1384-1609: Click-to-focus, camera following, mini-map
-- Lines 1610-1785: Settings panel, audio controls
-- Lines 1786-1987: Voyager spacecraft, lens flare
-- Lines 1988-2028: Keyboard shortcuts
+| Lines | Content |
+|-------|---------|
+| 1-70 | Global state, date/time functions |
+| 69-230 | `planetData`, `moonData`, `dwarfPlanetData` configuration arrays |
+| 230-345 | `init()` - Scene setup, calls all creation functions |
+| 345-475 | Time controls, starfield creation, lighting |
+| 479-725 | Sun creation (layers, corona, flares, spikes) |
+| 725-875 | Orbit path creation using astronomy-engine ecliptic coordinates |
+| 875-1220 | Planet creation and per-planet effects (atmospheres, rings, clouds) |
+| 1220-1370 | Moons: creation, position updates via astronomy-engine |
+| 1370-1590 | Window resize, mini-map, animation effects |
+| 1487-1590 | `animate()` loop - updates positions, rotations, camera follow |
+| 1589-1670 | Asteroid belt and Kuiper belt particle systems |
+| 1670-1850 | Click-to-focus, info panel |
+| 1849-2000 | Mini-map rendering, date display, moon phase |
+| 2000-2210 | Settings panel, fullscreen, touch handling, audio |
+| 2209-2420 | Voyager spacecraft, lens flare, keyboard shortcuts |
 
 **Key globals:**
-- `planets[]` - Array of planet meshes with orbital data
-- `moons[]` - Array of moon meshes
-- `scene`, `camera`, `renderer` - Three.js core objects
+- `planets[]` - Planet meshes with orbital data attached as properties
+- `moons[]` - Moon meshes
+- `dwarfPlanets[]` - Dwarf planet meshes (Pluto, etc.)
+- `scene`, `camera`, `renderer`, `labelRenderer` - Three.js core objects
 - `controls` - OrbitControls instance
-- `timeSpeed`, `isPaused`, `isReversed` - Simulation state
-- `selectedPlanet` - Currently focused object
+- `timeScale`, `isPaused`, `simulationTime` - Simulation state
+- `focusedPlanet`, `isFollowing` - Camera tracking state
+- `selectedDate` - Current simulation date (used with astronomy-engine)
 
 **External dependencies (all CDN):**
-- Three.js r128 core
-- OrbitControls.js
-- CSS2DRenderer.js
+- Three.js r128 (core, OrbitControls, CSS2DRenderer)
+- astronomy-engine 2.1.19 - Real astronomical calculations
 
-## Assets
+## Astronomy Engine Integration
 
-- `textures/` - 2K resolution planet textures (jpg/png)
-- `audio/` - Background music tracks (mp3)
+The simulation uses astronomy-engine for scientifically accurate positions:
+
+- **Planet positions**: `Astronomy.HelioVector()` → `Astronomy.Ecliptic()` for true ecliptic coordinates
+- **Moon positions**: `Astronomy.GeoMoon()` for Earth's Moon, `Astronomy.JupiterMoons()` for Galilean moons
+- **Moon phases**: `Astronomy.MoonPhase()`
+- **Visual magnitude**: `Astronomy.Illumination()`
+- **Coordinate system**: Ecliptic coordinates (planets orbit in true orbital planes)
+- **Scale**: 1 AU = 20 visual units (`AU_TO_VISUAL` constant at line 778)
 
 ## Key Patterns
 
-**Planet creation:** Each planet is a Three.js Mesh with texture, stored in `planets[]` array with orbital parameters attached as properties.
+**Planet creation:** Each planet is a Three.js Mesh with texture. Orbital position calculated via astronomy-engine at each frame based on `getSimulatedDate()`.
 
-**Animation loop:** `animate()` updates all object positions based on `timeSpeed`, handles camera following, updates mini-map, and renders scene.
+**Animation loop:** `animate()` calls astronomy-engine to get real positions for the simulated date, updates all object positions, handles camera following, renders mini-map.
 
-**User interaction:** Click raycasting for planet selection, OrbitControls for camera, keyboard shortcuts (1-8 for planets, 0 for Sun, V for Voyager).
+**User interaction:** Click raycasting for planet selection, OrbitControls for camera, keyboard shortcuts (1-8 for planets, 0 for Sun, V for Voyager, M for music).
+
+## Assets
+
+- `textures/` - 2K resolution planet/moon textures (jpg/png)
+- `audio/` - Background music tracks (mp3)
