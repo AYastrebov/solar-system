@@ -26,6 +26,7 @@ let isPaused = false;
 let simulationTime = 0;
 const speedSteps = [0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0];
 let currentSpeedIndex = 1; // Start at 0.25x
+const SUN_RADIUS = 5.5;  // Visual radius (real Sun is 109x Earth, scaled for visibility)
 
 // Camera focus/follow
 let focusedPlanet = null;
@@ -486,7 +487,7 @@ function createSun() {
     sunTexture.encoding = THREE.sRGBEncoding;
     
     // Core sun sphere with texture
-    const coreGeometry = new THREE.SphereGeometry(5, 64, 64);
+    const coreGeometry = new THREE.SphereGeometry(SUN_RADIUS, 64, 64);
     const coreMaterial = new THREE.MeshBasicMaterial({
         map: sunTexture
     });
@@ -503,7 +504,7 @@ function createSun() {
     
     // Animated glow layers (simulate turbulent corona)
     const glowColors = [0xffdd00, 0xffaa00, 0xff8800];
-    const glowSizes = [5.3, 5.5, 5.8];
+    const glowSizes = [SUN_RADIUS * 1.05, SUN_RADIUS * 1.1, SUN_RADIUS * 1.15];
     const glowOpacities = [0.3, 0.2, 0.15];
     
     for (let i = 0; i < 3; i++) {
@@ -528,7 +529,7 @@ function createSun() {
     }
     
     // Inner corona glow
-    const innerCoronaGeometry = new THREE.SphereGeometry(5.8, 32, 32);
+    const innerCoronaGeometry = new THREE.SphereGeometry(SUN_RADIUS * 1.15, 32, 32);
     const innerCoronaMaterial = new THREE.MeshBasicMaterial({
         color: 0xffaa33,
         transparent: true,
@@ -547,7 +548,7 @@ function createSun() {
     });
     
     // Outer corona glow
-    const outerCoronaGeometry = new THREE.SphereGeometry(7, 32, 32);
+    const outerCoronaGeometry = new THREE.SphereGeometry(SUN_RADIUS * 1.35, 32, 32);
     const outerCoronaMaterial = new THREE.MeshBasicMaterial({
         color: 0xff6600,
         transparent: true,
@@ -566,7 +567,7 @@ function createSun() {
     });
     
     // Far corona (subtle)
-    const farCoronaGeometry = new THREE.SphereGeometry(9, 32, 32);
+    const farCoronaGeometry = new THREE.SphereGeometry(SUN_RADIUS * 1.7, 32, 32);
     const farCoronaMaterial = new THREE.MeshBasicMaterial({
         color: 0xff4400,
         transparent: true,
@@ -592,7 +593,7 @@ function createSun() {
     
     // Add label to Sun
     const labelAnchor = new THREE.Mesh(
-        new THREE.SphereGeometry(5, 8, 8),
+        new THREE.SphereGeometry(SUN_RADIUS, 8, 8),
         new THREE.MeshBasicMaterial({ visible: false })
     );
     sun.add(labelAnchor);
@@ -611,7 +612,7 @@ function createSolarFlares() {
         // Start at sun surface
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(2 * Math.random() - 1);
-        const radius = 5 + Math.random() * 0.5;
+        const radius = SUN_RADIUS + Math.random() * 0.5;
         
         positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
         positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
@@ -670,8 +671,8 @@ function createCoronaSpikes() {
         const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
         
         // Position on sun surface pointing outward
-        spike.position.x = Math.cos(angle) * 5.5;
-        spike.position.z = Math.sin(angle) * 5.5;
+        spike.position.x = Math.cos(angle) * (SUN_RADIUS * 1.1);
+        spike.position.z = Math.sin(angle) * (SUN_RADIUS * 1.1);
         spike.position.y = (Math.random() - 0.5) * 3;
         
         // Point outward from center
@@ -703,9 +704,9 @@ function createCoronaSpikes() {
         
         const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
         
-        spike.position.x = Math.cos(angle) * 3;
-        spike.position.z = Math.sin(angle) * 3;
-        spike.position.y = isTop ? 4.5 : -4.5;
+        spike.position.x = Math.cos(angle) * (SUN_RADIUS * 0.5);
+        spike.position.z = Math.sin(angle) * (SUN_RADIUS * 0.5);
+        spike.position.y = isTop ? (SUN_RADIUS * 0.75) : -(SUN_RADIUS * 0.75);
         
         if (!isTop) spike.rotation.x = Math.PI;
         
@@ -773,9 +774,9 @@ function createRealPlanetOrbitPath(bodyName, color = 0x444444) {
 }
 
 // Create orbit paths using real astronomy data
-// Scale factor: 1 AU = 20 visual units (keeps inner planets visible outside Sun radius of 5)
-// Mercury at 0.39 AU = 7.8 units, Earth at 1 AU = 20 units, Neptune at 30 AU = 600 units
-const AU_TO_VISUAL = 20;
+// Scale factor: 1 AU = 22 visual units (keeps inner planets visible outside Sun)
+// Mercury at 0.39 AU = 8.6 units, Earth at 1 AU = 22 units, Neptune at 30 AU = 660 units
+const AU_TO_VISUAL = 22;
 
 function createRealOrbitPath(bodyName) {
     // Sample positions over one complete orbit
@@ -1453,7 +1454,7 @@ function animateSun(time) {
                 // Respawn at sun surface
                 const theta = Math.random() * Math.PI * 2;
                 const phi = Math.acos(2 * Math.random() - 1);
-                const radius = 5 + Math.random() * 0.5;
+                const radius = SUN_RADIUS + Math.random() * 0.5;
                 
                 positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
                 positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
