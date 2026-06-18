@@ -241,8 +241,30 @@ function init() {
 
     warnIfFileProtocol();
     
-    // Create texture loader
-    textureLoader = new THREE.TextureLoader();
+    // Create loading manager and texture loader
+    const loadingManager = new THREE.LoadingManager();
+    const loadingErrors = [];
+    
+    loadingManager.onLoad = () => {
+        const loader = document.getElementById('loader');
+        if (loader) loader.classList.add('hidden');
+        
+        if (loadingErrors.length > 0) {
+            console.warn('Some textures failed to load:', loadingErrors);
+        }
+    };
+    
+    loadingManager.onError = (url) => {
+        loadingErrors.push(url);
+        const errorEl = document.getElementById('loaderError');
+        if (errorEl) {
+            errorEl.textContent = `Warning: failed to load some textures. Check console for details.`;
+            errorEl.classList.remove('hidden');
+        }
+        console.error('Failed to load texture:', url);
+    };
+    
+    textureLoader = new THREE.TextureLoader(loadingManager);
     
     // Create scene
     scene = new THREE.Scene();
