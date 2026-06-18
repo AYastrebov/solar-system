@@ -55,7 +55,7 @@ An interactive 3D visualization of our Solar System built with Three.js and powe
 
 ## Demo
 
-Open `index.html` in a modern web browser. No build tools required.
+Open `index.html` in a modern web browser. No build tools required, but some browsers block textures when opening via `file://`.
 
 **[Live Demo](https://ayastrebov.github.io/solar-system/)**
 
@@ -78,7 +78,7 @@ cd solar-system
 open index.html  # or double-click the file
 ```
 
-Or serve with any static file server:
+For reliable texture loading, serve with any static file server:
 ```bash
 npx serve .
 # or
@@ -118,7 +118,7 @@ The simulation uses **astronomy-engine** for real astronomical calculations:
 - **Axial tilts** - Accurate values (Earth 23.4°, Uranus 97.8°)
 
 ### Scale Notes
-- **Distances**: 1 AU = 20 visual units (proportionally accurate)
+- **Distances**: 1 AU = 22 visual units (proportionally accurate)
 - **Planet sizes**: Scaled for visibility but proportionally correct relative to each other
   - Terrestrial planets: 0.38-1.0 units (Mercury-Earth scale)
   - Gas giants: 4.5-5.5 units (visibly larger)

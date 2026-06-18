@@ -22,23 +22,23 @@
         </div>
         <div class="date-controls">
             <input type="date" id="datePicker" />
-            <button id="resetDateBtn" title="Reset to Today">↻</button>
+            <button id="resetDateBtn" title="Reset to Today" aria-label="Reset to Today">↻</button>
         </div>
     </div>
     
     <!-- Time Controls -->
     <div id="controls">
-        <button id="rewindBtn" title="Rewind">&#9194;</button>
-        <button id="slowBtn" title="Slow Down">&#9668;</button>
-        <button id="pauseBtn" title="Pause/Play">&#9208;</button>
-        <button id="fastBtn" title="Speed Up">&#9658;</button>
-        <button id="ffwdBtn" title="Fast Forward">&#9193;</button>
+        <button id="rewindBtn" title="Rewind" aria-label="Rewind">&#9194;</button>
+        <button id="slowBtn" title="Slow Down" aria-label="Slow Down">&#9668;</button>
+        <button id="pauseBtn" title="Pause/Play" aria-label="Pause or Play">&#9208;</button>
+        <button id="fastBtn" title="Speed Up" aria-label="Speed Up">&#9658;</button>
+        <button id="ffwdBtn" title="Fast Forward" aria-label="Fast Forward">&#9193;</button>
         <div id="speedDisplay">0.25x</div>
     </div>
     
     <!-- Planet Info Panel -->
     <div id="infoPanel" class="hidden">
-        <button id="closePanelBtn">&times;</button>
+        <button id="closePanelBtn" aria-label="Close Info Panel">&times;</button>
         <h2 id="planetName">Earth</h2>
         <div class="info-grid">
             <div class="info-item">
@@ -100,7 +100,7 @@
     
     <!-- Settings Panel -->
     <div id="settingsPanel">
-        <button id="settingsToggle" title="Settings">&#9881;</button>
+        <button id="settingsToggle" title="Settings" aria-label="Settings">&#9881;</button>
         <div id="settingsContent" class="hidden">
             <h3>Settings</h3>
             <label><input type="checkbox" id="toggleLabels" checked> Show Labels</label>
@@ -111,10 +111,10 @@
     </div>
     
     <!-- Fullscreen Button -->
-    <button id="fullscreenBtn" title="Fullscreen">&#x26F6;</button>
+    <button id="fullscreenBtn" title="Fullscreen" aria-label="Fullscreen">&#x26F6;</button>
     
     <!-- Sound Toggle Button -->
-    <button id="soundBtn" title="Toggle Music">&#128264;</button>
+    <button id="soundBtn" title="Toggle Music" aria-label="Toggle Music">&#128264;</button>
     
     <!-- Background Music -->
     <audio id="bgMusic" loop>

@@ -65,7 +65,7 @@ The simulation uses astronomy-engine for scientifically accurate positions:
 - **Moon phases**: `Astronomy.MoonPhase()`
 - **Visual magnitude**: `Astronomy.Illumination()`
 - **Coordinate system**: Ecliptic coordinates (planets orbit in true orbital planes)
-- **Scale**: 1 AU = 20 visual units (`AU_TO_VISUAL` constant at line 778)
+- **Scale**: 1 AU = 22 visual units (`AU_TO_VISUAL` constant at line 778)
 
 ## Key Patterns
 

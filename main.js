@@ -24,9 +24,13 @@ let voyager1, voyager2;  // Voyager spacecraft
 let timeScale = 0.25;
 let isPaused = false;
 let simulationTime = 0;
+let visualTime = 0;
 const speedSteps = [0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0];
 let currentSpeedIndex = 1; // Start at 0.25x
 const SUN_RADIUS = 5.5;  // Visual radius (real Sun is 109x Earth, scaled for visibility)
+const FRAME_TIME_SCALE = 60;
+const MINI_MAP_INTERVAL = 1 / 15;
+let lastMiniMapUpdate = 0;
 
 // Camera focus/follow
 let focusedPlanet = null;
@@ -49,8 +53,6 @@ let settings = {
 let orbitLines = [];
 
 // Simulation start date - use current date for real planet positions
-const J2000 = new Date('2000-01-01T12:00:00Z');
-let baseSimulationDate = new Date();
 let selectedDate = new Date(); // Date selected by user via date picker
 
 // Get the simulated date based on simulation time
@@ -62,6 +64,12 @@ function getSimulatedDate() {
     const simDate = new Date(selectedDate);
     simDate.setTime(simDate.getTime() + yearsElapsed * 365.25 * 24 * 60 * 60 * 1000);
     return simDate;
+}
+
+function isTextInputTarget(target) {
+    if (!target) return false;
+    const tagName = target.tagName;
+    return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || target.isContentEditable;
 }
 
 // Planet data: name, color, size, orbitRadius, orbitSpeed, rotationSpeed, inclination (degrees), axialTilt, texture, info
@@ -230,6 +238,8 @@ const dwarfPlanetData = [
 // Initialize the scene
 function init() {
     clock = new THREE.Clock();
+
+    warnIfFileProtocol();
     
     // Create texture loader
     textureLoader = new THREE.TextureLoader();
@@ -249,7 +259,7 @@ function init() {
     // Create WebGL renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputEncoding = THREE.sRGBEncoding;  // Proper color output for textures
     document.getElementById('container').appendChild(renderer.domElement);
     
@@ -342,6 +352,17 @@ function init() {
     animate();
 }
 
+function warnIfFileProtocol() {
+    if (window.location.protocol !== 'file:') return;
+
+    const infoText = document.querySelector('#info p');
+    if (infoText) {
+        infoText.textContent += ' | Textures may not load from file://. Use a local server.';
+    }
+
+    console.warn('Textures may not load from file://. Run a local server (e.g. `npx serve .` or `python -m http.server`).');
+}
+
 // Setup time control buttons
 function setupTimeControls() {
     const pauseBtn = document.getElementById('pauseBtn');
@@ -392,6 +413,7 @@ function setupTimeControls() {
     
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
+        if (isTextInputTarget(e.target)) return;
         switch(e.code) {
             case 'Space':
                 e.preventDefault();
@@ -618,16 +640,17 @@ function createSolarFlares() {
         positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
         positions[i * 3 + 2] = radius * Math.cos(phi);
         
-        // Outward velocity
+        // Outward velocity (per second)
+        const baseSpeed = 0.02 * FRAME_TIME_SCALE;
         velocities.push({
-            x: positions[i * 3] * 0.02,
-            y: positions[i * 3 + 1] * 0.02,
-            z: positions[i * 3 + 2] * 0.02
+            x: positions[i * 3] * baseSpeed,
+            y: positions[i * 3 + 1] * baseSpeed,
+            z: positions[i * 3 + 2] * baseSpeed
         });
         
         lifetimes.push({
-            current: Math.random() * 100,
-            max: 50 + Math.random() * 50
+            current: Math.random() * (100 / FRAME_TIME_SCALE),
+            max: (50 + Math.random() * 50) / FRAME_TIME_SCALE
         });
     }
     
@@ -1386,15 +1409,16 @@ function updateMiniMapSize() {
 }
 
 // Animate planet visual effects
-function animatePlanetEffects(time) {
+function animatePlanetEffects(time, delta) {
+    const deltaScale = delta * FRAME_TIME_SCALE;
     planetEffects.forEach(effect => {
         // Rotate clouds, atmospheric bands, and rings
         if (effect.rotationSpeed) {
             // Use specified rotation axis or default to Y
             if (effect.rotationAxis === 'z') {
-                effect.mesh.rotation.z += effect.rotationSpeed;
+                effect.mesh.rotation.z += effect.rotationSpeed * deltaScale;
             } else {
-                effect.mesh.rotation.y += effect.rotationSpeed;
+                effect.mesh.rotation.y += effect.rotationSpeed * deltaScale;
             }
         }
         
@@ -1414,16 +1438,17 @@ function animatePlanetEffects(time) {
 }
 
 // Animate Sun visual effects
-function animateSun(time) {
+function animateSun(time, delta) {
     // Rotate sun container slowly
-    sun.rotation.y += 0.001;
+    const deltaScale = delta * FRAME_TIME_SCALE;
+    sun.rotation.y += 0.001 * deltaScale;
     
     // Animate all sun layers
     sunLayers.forEach(layer => {
         // Rotate layer
-        layer.mesh.rotation.x += layer.speedX;
-        layer.mesh.rotation.y += layer.speedY;
-        if (layer.speedZ) layer.mesh.rotation.z += layer.speedZ;
+        layer.mesh.rotation.x += layer.speedX * deltaScale;
+        layer.mesh.rotation.y += layer.speedY * deltaScale;
+        if (layer.speedZ) layer.mesh.rotation.z += layer.speedZ * deltaScale;
         
         // Pulse effect for corona layers
         if (layer.pulseSpeed && layer.baseOpacity) {
@@ -1447,7 +1472,7 @@ function animateSun(time) {
             const lifetime = flare.lifetimes[i];
             const velocity = flare.velocities[i];
             
-            lifetime.current += 1;
+            lifetime.current += delta;
             
             // Reset particle when lifetime expires
             if (lifetime.current >= lifetime.max) {
@@ -1461,22 +1486,24 @@ function animateSun(time) {
                 positions[i * 3 + 2] = radius * Math.cos(phi);
                 
                 // New outward velocity
-                velocity.x = positions[i * 3] * (0.01 + Math.random() * 0.02);
-                velocity.y = positions[i * 3 + 1] * (0.01 + Math.random() * 0.02);
-                velocity.z = positions[i * 3 + 2] * (0.01 + Math.random() * 0.02);
+                const baseSpeed = (0.01 + Math.random() * 0.02) * FRAME_TIME_SCALE;
+                velocity.x = positions[i * 3] * baseSpeed;
+                velocity.y = positions[i * 3 + 1] * baseSpeed;
+                velocity.z = positions[i * 3 + 2] * baseSpeed;
                 
                 lifetime.current = 0;
-                lifetime.max = 50 + Math.random() * 50;
+                lifetime.max = (50 + Math.random() * 50) / FRAME_TIME_SCALE;
             } else {
                 // Move particle outward
-                positions[i * 3] += velocity.x;
-                positions[i * 3 + 1] += velocity.y;
-                positions[i * 3 + 2] += velocity.z;
+                positions[i * 3] += velocity.x * delta;
+                positions[i * 3 + 1] += velocity.y * delta;
+                positions[i * 3 + 2] += velocity.z * delta;
                 
                 // Slow down over time
-                velocity.x *= 0.98;
-                velocity.y *= 0.98;
-                velocity.z *= 0.98;
+                const damping = Math.pow(0.98, deltaScale);
+                velocity.x *= damping;
+                velocity.y *= damping;
+                velocity.z *= damping;
             }
         }
         
@@ -1489,6 +1516,8 @@ function animate() {
     requestAnimationFrame(animate);
     
     const delta = clock.getDelta();
+    visualTime += delta;
+    const deltaScale = delta * FRAME_TIME_SCALE;
     
     // Update simulation time based on pause state and time scale
     if (!isPaused) {
@@ -1496,7 +1525,7 @@ function animate() {
     }
     
     // Animate Sun effects (always animate for visual appeal)
-    animateSun(simulationTime);
+    animateSun(visualTime, delta);
     
     // Get the current simulated date for astronomy calculations
     const simDate = getSimulatedDate();
@@ -1519,7 +1548,7 @@ function animate() {
         
         // Rotate on own axis
         if (!isPaused) {
-            planet.mesh.rotation.y += planet.data.rotationSpeed * timeScale;
+            planet.mesh.rotation.y += planet.data.rotationSpeed * timeScale * deltaScale;
         }
     });
     
@@ -1541,7 +1570,7 @@ function animate() {
         
         // Rotate on own axis
         if (!isPaused) {
-            dwarfPlanet.mesh.rotation.y += dwarfPlanet.data.rotationSpeed * timeScale;
+            dwarfPlanet.mesh.rotation.y += dwarfPlanet.data.rotationSpeed * timeScale * deltaScale;
         }
     });
     
@@ -1549,14 +1578,14 @@ function animate() {
     updateMoonPositions(simDate);
     
     // Animate planet effects
-    animatePlanetEffects(simulationTime);
+    animatePlanetEffects(visualTime, delta);
     
     // Animate asteroid belt and Kuiper belt
     if (asteroidBelt && settings.showAsteroids) {
-        asteroidBelt.rotation.y += 0.0005 * timeScale;
+        asteroidBelt.rotation.y += 0.0005 * timeScale * deltaScale;
     }
     if (kuiperBelt && settings.showAsteroids) {
-        kuiperBelt.rotation.y += 0.0002 * timeScale; // Slower rotation for outer belt
+        kuiperBelt.rotation.y += 0.0002 * timeScale * deltaScale; // Slower rotation for outer belt
     }
     
     // Update camera if following a planet
@@ -1568,7 +1597,10 @@ function animate() {
     controls.update();
     
     // Update mini map
-    updateMiniMap();
+    if (visualTime - lastMiniMapUpdate >= MINI_MAP_INTERVAL) {
+        updateMiniMap();
+        lastMiniMapUpdate = visualTime;
+    }
     
     // Update date display
     updateDateDisplay();
@@ -2008,7 +2040,6 @@ function setupDatePicker() {
         const newDate = new Date(e.target.value + 'T12:00:00Z');
         if (!isNaN(newDate.getTime())) {
             selectedDate = newDate;
-            baseSimulationDate = newDate;
             simulationTime = 0; // Reset simulation time
             // Planet positions will be recalculated automatically in animate() loop
         }
@@ -2021,7 +2052,6 @@ function setupDatePicker() {
         datePicker.value = todayStr;
         
         selectedDate = today;
-        baseSimulationDate = today;
         simulationTime = 0;
         // Planet positions will be recalculated automatically in animate() loop
     });
@@ -2200,6 +2230,7 @@ function setupBackgroundMusic() {
     
     // Add keyboard shortcut (M key)
     document.addEventListener('keydown', (e) => {
+        if (isTextInputTarget(e.target)) return;
         if (e.code === 'KeyM') {
             soundBtn.click();
         }
@@ -2413,6 +2444,7 @@ function updateLensFlare() {
 // Setup keyboard shortcuts for planet navigation
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
+        if (isTextInputTarget(e.target)) return;
         // Number keys 1-8 for planets
         const key = e.key;
         if (key >= '1' && key <= '8') {
