@@ -51,6 +51,7 @@ let settings = {
 
 // Orbit lines for toggle
 let orbitLines = [];
+let moonOrbitLines = [];
 
 // Simulation start date - use current date for real planet positions
 let selectedDate = new Date(); // Date selected by user via date picker
@@ -1317,6 +1318,7 @@ function createMoons(planet, planetName) {
         // Create moon orbit path (smaller, more transparent)
         const moonOrbitPath = createMoonOrbitPath(data.orbitRadius);
         planet.add(moonOrbitPath);
+        moonOrbitLines.push(moonOrbitPath);
         
         // Add label to moon
         addLabel(moon, data.name, false, true);
@@ -2132,6 +2134,9 @@ function toggleOrbits(show) {
         orbit.visible = show;
     });
     dwarfOrbitLines.forEach(orbit => {
+        orbit.visible = show;
+    });
+    moonOrbitLines.forEach(orbit => {
         orbit.visible = show;
     });
 }
