@@ -53,6 +53,15 @@ let settings = {
 let orbitLines = [];
 let moonOrbitLines = [];
 
+// Astronomy position caching to avoid recalculating every frame
+const ASTRONOMY_TIME_THRESHOLD_MS = 1000 * 60 * 60; // 1 hour of simulated time
+let lastAstronomySimDate = null;
+let cachedPlanetPositions = new Map();
+
+// Dynamic info panel caching
+let lastDynamicInfoSimDate = null;
+const DYNAMIC_INFO_THRESHOLD_MS = 1000 * 60 * 60; // 1 hour of simulated time
+
 // Simulation start date - use current date for real planet positions
 let selectedDate = new Date(); // Date selected by user via date picker
 
@@ -71,6 +80,37 @@ function isTextInputTarget(target) {
     if (!target) return false;
     const tagName = target.tagName;
     return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || target.isContentEditable;
+}
+
+// Check if astronomy positions should be recalculated based on simulated time change
+function shouldUpdateAstronomy(simDate) {
+    if (!lastAstronomySimDate) return true;
+    return Math.abs(simDate.getTime() - lastAstronomySimDate.getTime()) >= ASTRONOMY_TIME_THRESHOLD_MS;
+}
+
+// Get heliocentric position with caching by simulated date
+function getHelioPosition(bodyName, simDate) {
+    if (shouldUpdateAstronomy(simDate)) {
+        cachedPlanetPositions.clear();
+        lastAstronomySimDate = simDate;
+    }
+    
+    if (!cachedPlanetPositions.has(bodyName)) {
+        try {
+            const vec = Astronomy.HelioVector(bodyName, simDate);
+            const ecl = Astronomy.Ecliptic(vec);
+            cachedPlanetPositions.set(bodyName, new THREE.Vector3(
+                ecl.vec.x * AU_TO_VISUAL,
+                ecl.vec.z * AU_TO_VISUAL,
+                -ecl.vec.y * AU_TO_VISUAL
+            ));
+        } catch (e) {
+            console.error(`Failed to calculate position for ${bodyName}:`, e);
+            cachedPlanetPositions.set(bodyName, null);
+        }
+    }
+    
+    return cachedPlanetPositions.get(bodyName);
 }
 
 // Planet data: name, color, size, orbitRadius, orbitSpeed, rotationSpeed, inclination (degrees), axialTilt, texture, info
@@ -1555,21 +1595,10 @@ function animate() {
     // Get the current simulated date for astronomy calculations
     const simDate = getSimulatedDate();
     
-    // Animate planets using real astronomy data (direct positioning)
+    // Animate planets using real astronomy data (cached by simulated time)
     planets.forEach(planet => {
-        // Get real heliocentric position from astronomy-engine
-        try {
-            const vec = Astronomy.HelioVector(planet.data.name, simDate);
-            // HelioVector returns J2000 Equatorial (EQJ) coordinates, convert to ecliptic
-            const ecl = Astronomy.Ecliptic(vec);
-            // Convert AU to visual units and apply coordinate transformation
-            // Ecliptic X,Y plane -> Three.js X,Z plane (Y is up)
-            planet.mesh.position.x = ecl.vec.x * AU_TO_VISUAL;
-            planet.mesh.position.y = ecl.vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y (height above orbital plane)
-            planet.mesh.position.z = -ecl.vec.y * AU_TO_VISUAL; // Ecliptic Y -> Visual -Z
-        } catch (e) {
-            // Fallback if astronomy calculation fails
-        }
+        const position = getHelioPosition(planet.data.name, simDate);
+        if (position) planet.mesh.position.copy(position);
         
         // Rotate on own axis
         if (!isPaused) {
@@ -1579,19 +1608,8 @@ function animate() {
     
     // Animate dwarf planets (Pluto) using real astronomy data
     dwarfPlanets.forEach(dwarfPlanet => {
-        // Get real heliocentric position from astronomy-engine
-        try {
-            const vec = Astronomy.HelioVector(dwarfPlanet.data.name, simDate);
-            // HelioVector returns J2000 Equatorial (EQJ) coordinates, convert to ecliptic
-            const ecl = Astronomy.Ecliptic(vec);
-            // Convert AU to visual units and apply coordinate transformation
-            // Ecliptic X,Y plane -> Three.js X,Z plane (Y is up)
-            dwarfPlanet.mesh.position.x = ecl.vec.x * AU_TO_VISUAL;
-            dwarfPlanet.mesh.position.y = ecl.vec.z * AU_TO_VISUAL; // Ecliptic Z -> Visual Y (height above orbital plane)
-            dwarfPlanet.mesh.position.z = -ecl.vec.y * AU_TO_VISUAL; // Ecliptic Y -> Visual -Z
-        } catch (e) {
-            // Fallback if astronomy calculation fails
-        }
+        const position = getHelioPosition(dwarfPlanet.data.name, simDate);
+        if (position) dwarfPlanet.mesh.position.copy(position);
         
         // Rotate on own axis
         if (!isPaused) {
@@ -1865,6 +1883,13 @@ function showInfoPanel(data) {
 // Update dynamic planet info using astronomy-engine (distance and magnitude)
 function updateDynamicPlanetInfo(planetName) {
     const simDate = getSimulatedDate();
+    
+    // Throttle dynamic info updates to avoid excessive astronomy-engine calls
+    if (lastDynamicInfoSimDate && 
+        Math.abs(simDate.getTime() - lastDynamicInfoSimDate.getTime()) < DYNAMIC_INFO_THRESHOLD_MS) {
+        return;
+    }
+    lastDynamicInfoSimDate = simDate;
     
     // List of bodies supported by astronomy-engine
     const supportedBodies = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
