@@ -1633,7 +1633,7 @@ function animate() {
     
     // Update camera if following a planet
     if (isFollowing && focusedPlanet) {
-        updateCameraFollow();
+        updateCameraFollow(delta);
     }
     
     // Update controls
@@ -1828,16 +1828,17 @@ function focusOnPlanet(planetObj) {
     document.getElementById('unfocusBtn').classList.remove('hidden');
 }
 
-function updateCameraFollow() {
+function updateCameraFollow(delta) {
     if (!focusedPlanet) return;
     
     const planetWorldPos = new THREE.Vector3();
     focusedPlanet.mesh.getWorldPosition(planetWorldPos);
     
-    // Smoothly move camera to follow planet
+    // Smoothly move camera to follow planet (frame-rate independent lerp)
     const targetPos = planetWorldPos.clone().add(cameraOffset);
-    camera.position.lerp(targetPos, 0.05);
-    controls.target.lerp(planetWorldPos, 0.05);
+    const t = 1 - Math.pow(0.95, delta * FRAME_TIME_SCALE);
+    camera.position.lerp(targetPos, t);
+    controls.target.lerp(planetWorldPos, t);
 }
 
 function unfocusPlanet() {
