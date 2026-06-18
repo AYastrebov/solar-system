@@ -516,12 +516,13 @@ function createSun() {
     const sunCore = new THREE.Mesh(coreGeometry, coreMaterial);
     sun.add(sunCore);
     
-    // Store core for rotation animation
+    // Store core for rotation animation (not an effect, keep visible)
     sunLayers.push({
         mesh: sunCore,
         speedX: 0,
         speedY: 0.002,
-        speedZ: 0
+        speedZ: 0,
+        isCore: true
     });
     
     // Animated glow layers (simulate turbulent corona)
@@ -2114,9 +2115,14 @@ function toggleOrbits(show) {
 }
 
 function toggleEffects(show) {
-    // Toggle sun effects
+    // Toggle sun effects (keep core always visible)
     sunLayers.forEach(layer => {
-        if (layer.mesh) layer.mesh.visible = show;
+        if (layer.mesh && !layer.isCore) layer.mesh.visible = show;
+    });
+    
+    // Toggle solar flares
+    sunFlares.forEach(flare => {
+        if (flare.system) flare.system.visible = show;
     });
     
     // Toggle planet effects
