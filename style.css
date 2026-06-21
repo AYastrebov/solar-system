@@ -19,6 +19,11 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
+button {
+    /* Prevent double-tap zoom on buttons while keeping native click behavior */
+    touch-action: manipulation;
+}
+
 #container {
     width: 100vw;
     height: 100vh;

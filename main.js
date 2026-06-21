@@ -2217,14 +2217,7 @@ function setupTouchHandling() {
         }
     }, { passive: false });
     
-    // Prevent double-tap zoom on buttons
-    const buttons = document.querySelectorAll('button');
-    buttons.forEach(btn => {
-        btn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            btn.click();
-        });
-    });
+    // Note: double-tap zoom on buttons is prevented via CSS touch-action: manipulation
 }
 
 // Background music control
