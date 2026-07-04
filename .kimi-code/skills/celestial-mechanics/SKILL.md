@@ -88,14 +88,18 @@ mesh.rotation.y -= rotationSpeed * deltaTime;
 ### Tidal Locking
 
 ```javascript
-// Keep the same face toward the parent planet
+// Keep the same face toward the parent planet.
+// This is the simplified form for moons orbiting in the XZ plane;
+// for inclined/elliptical orbits, derive the look-at from the parent.
 moonMesh.rotation.y = -moonOrbitContainer.rotation.y;
 ```
 
 ## Phase Calculations
 
 ```javascript
-// Sun direction in Moon's local space for shaders
+// Sun direction in Moon's local space for shaders.
+// Sun is at world origin; transform that point into Moon's local space.
+// The result is the vector from the Moon's center to the Sun, which we normalize.
 const sunLocal = new THREE.Vector3(0, 0, 0);
 moonMesh.worldToLocal(sunLocal);
 moonPhaseMaterial.uniforms.sunDirection.value.copy(sunLocal).normalize();
