@@ -924,6 +924,10 @@ function createRealOrbitPath(bodyName) {
 // Create all dwarf planets (Pluto only, using astronomy-engine)
 function createDwarfPlanets() {
     dwarfPlanetData.forEach(data => {
+        // Create a container for the dwarf planet system
+        const dwarfContainer = new THREE.Object3D();
+        scene.add(dwarfContainer);
+        
         // Create dwarf planet mesh with solid color (no textures available)
         const geometry = new THREE.SphereGeometry(data.size, 24, 24);
         
@@ -934,32 +938,29 @@ function createDwarfPlanets() {
         });
         
         const dwarfPlanet = new THREE.Mesh(geometry, material);
+        dwarfContainer.add(dwarfPlanet);
         
-        // Apply axial tilt
+        // Apply axial tilt to container for stable rotation axis
         if (data.axialTilt) {
-            dwarfPlanet.rotation.z = (data.axialTilt * Math.PI) / 180;
+            dwarfContainer.rotation.z = (data.axialTilt * Math.PI) / 180;
         }
-        
-        // Add dwarf planet directly to scene (position will be set in animate loop)
-        scene.add(dwarfPlanet);
         
         // Create real orbit path from astronomy-engine
         const orbitPath = createRealOrbitPath(data.name);
         scene.add(orbitPath);
         
-        // Add label to dwarf planet
-        addLabel(dwarfPlanet, data.name, false, false);
+        // Add label to dwarf planet container
+        addLabel(dwarfContainer, data.name, false, false, data.size);
         
         // Create moons for Pluto
         if (data.name === 'Pluto') {
-            createMoons(dwarfPlanet, data.name);
+            createMoons(dwarfContainer, data.name);
         }
         
         // Store dwarf planet data for animation
-        // Note: no container needed since we set position directly
         dwarfPlanets.push({
             mesh: dwarfPlanet,
-            container: null, // No container - position set directly
+            container: dwarfContainer,
             data: data
         });
     });
@@ -968,6 +969,10 @@ function createDwarfPlanets() {
 // Create all planets using real astronomy data
 function createPlanets() {
     planetData.forEach(data => {
+        // Create a container for the planet system (position + axial tilt)
+        const planetContainer = new THREE.Object3D();
+        scene.add(planetContainer);
+        
         // Create planet mesh with texture
         const geometry = new THREE.SphereGeometry(data.size, 32, 32);
         
@@ -982,34 +987,32 @@ function createPlanets() {
         });
         
         const planet = new THREE.Mesh(geometry, material);
+        planetContainer.add(planet);
         
-        // Apply axial tilt to planet
+        // Apply axial tilt to the container so the rotation axis is stable
         if (data.axialTilt) {
-            planet.rotation.z = (data.axialTilt * Math.PI) / 180;
+            planetContainer.rotation.z = (data.axialTilt * Math.PI) / 180;
         }
-        
-        // Add planet directly to scene (position will be set in animate loop)
-        scene.add(planet);
         
         // Create real orbit path from astronomy-engine
         const orbitPath = createRealPlanetOrbitPath(data.name, 0x444444);
         scene.add(orbitPath);
         
-        // Add visual effects based on planet type
+        // Add visual effects based on planet type (children of mesh so they rotate with day/night)
         addPlanetEffects(planet, data);
         
-        // Add label to planet
-        addLabel(planet, data.name, false, false);
+        // Add label to planet container
+        addLabel(planetContainer, data.name, false, false, data.size);
         
-        // Add moons for Earth, Mars, Jupiter, Saturn, Uranus, and Neptune
+        // Add moons to container so they orbit independently of planet rotation
         if (data.name === 'Earth' || data.name === 'Mars' || data.name === 'Jupiter' || data.name === 'Saturn' || data.name === 'Uranus' || data.name === 'Neptune') {
-            createMoons(planet, data.name);
+            createMoons(planetContainer, data.name);
         }
         
-        // Store planet data for animation (no container - position set directly)
+        // Store planet data for animation
         planets.push({
             mesh: planet,
-            container: null,
+            container: planetContainer,
             data: data
         });
     });
@@ -1310,7 +1313,7 @@ function addNeptuneEffects(planet, data) {
 }
 
 // Add CSS2D label to an object
-function addLabel(object, text, isSun, isMoon) {
+function addLabel(object, text, isSun, isMoon, radius) {
     const labelDiv = document.createElement('div');
     let className = 'planet-label';
     if (isSun) className += ' sun-label';
@@ -1320,12 +1323,13 @@ function addLabel(object, text, isSun, isMoon) {
     
     const label = new THREE.CSS2DObject(labelDiv);
     const offset = isMoon ? 0.8 : 1.5;
-    label.position.set(0, object.geometry.parameters.radius + offset, 0);
+    const objectRadius = radius || (object.geometry && object.geometry.parameters && object.geometry.parameters.radius) || 1;
+    label.position.set(0, objectRadius + offset, 0);
     object.add(label);
 }
 
-// Create moons for a planet
-function createMoons(planet, planetName) {
+// Create moons for a planet (parent is the planet system container)
+function createMoons(parentBody, planetName) {
     const planetMoons = moonData[planetName];
     if (!planetMoons) return;
     
@@ -1355,7 +1359,7 @@ function createMoons(planet, planetName) {
         
         // Create a container for moon's orbital movement around planet
         const moonOrbitContainer = new THREE.Object3D();
-        planet.add(moonOrbitContainer);
+        parentBody.add(moonOrbitContainer);
         
         // Position moon at its orbital distance from planet
         moon.position.x = data.orbitRadius;
@@ -1609,9 +1613,9 @@ function animate() {
     // Animate planets using real astronomy data (cached by simulated time)
     planets.forEach(planet => {
         const position = getHelioPosition(planet.data.name, simDate);
-        if (position) planet.mesh.position.copy(position);
+        if (position) planet.container.position.copy(position);
         
-        // Rotate on own axis
+        // Rotate planet mesh on its own axis inside the tilted container
         if (!isPaused) {
             planet.mesh.rotation.y += planet.data.rotationSpeed * timeScale * deltaScale;
         }
@@ -1620,9 +1624,9 @@ function animate() {
     // Animate dwarf planets (Pluto) using real astronomy data
     dwarfPlanets.forEach(dwarfPlanet => {
         const position = getHelioPosition(dwarfPlanet.data.name, simDate);
-        if (position) dwarfPlanet.mesh.position.copy(position);
+        if (position) dwarfPlanet.container.position.copy(position);
         
-        // Rotate on own axis
+        // Rotate dwarf planet mesh on its own axis inside the tilted container
         if (!isPaused) {
             dwarfPlanet.mesh.rotation.y += dwarfPlanet.data.rotationSpeed * timeScale * deltaScale;
         }
@@ -1824,6 +1828,17 @@ function setupClickToFocus() {
     }, { passive: true });
 }
 
+function findPlanetObject(threeObject) {
+    let obj = threeObject;
+    while (obj && obj !== scene) {
+        const planet = planets.find(p => p.mesh === obj || p.container === obj) ||
+                       dwarfPlanets.find(p => p.mesh === obj || p.container === obj);
+        if (planet) return planet;
+        obj = obj.parent;
+    }
+    return null;
+}
+
 function onPlanetClick(event) {
     // Calculate mouse position in normalized device coordinates
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -1832,25 +1847,18 @@ function onPlanetClick(event) {
     // Update raycaster
     raycaster.setFromCamera(mouse, camera);
     
-    // Get all planet and dwarf planet meshes
+    // Get all planet, dwarf planet, and moon meshes (recursive for effects)
     const planetMeshes = planets.map(p => p.mesh);
     const dwarfPlanetMeshes = dwarfPlanets.map(p => p.mesh);
-    const allMeshes = [...planetMeshes, ...dwarfPlanetMeshes];
+    const moonMeshes = moons.map(m => m.mesh);
+    const allMeshes = [...planetMeshes, ...dwarfPlanetMeshes, ...moonMeshes];
     
     // Check for intersections
     const intersects = raycaster.intersectObjects(allMeshes, true);
     
     if (intersects.length > 0) {
-        // Find which planet was clicked
-        let clickedMesh = intersects[0].object;
-        
-        // Traverse up to find the actual planet mesh
-        const allPlanets = [...planets, ...dwarfPlanets];
-        while (clickedMesh.parent && !allPlanets.find(p => p.mesh === clickedMesh)) {
-            clickedMesh = clickedMesh.parent;
-        }
-        
-        const planetObj = allPlanets.find(p => p.mesh === clickedMesh);
+        // Find which planet was clicked by traversing up to container
+        const planetObj = findPlanetObject(intersects[0].object);
         if (planetObj) {
             focusOnPlanet(planetObj);
         }
@@ -2004,8 +2012,8 @@ function updateMiniMap() {
     
     // Draw planets (using real positions from astronomy-engine)
     planets.forEach(planet => {
-        // Get planet position from mesh (uses real astronomy position)
-        const meshPos = planet.mesh.position;
+        // Get planet position from container (uses real astronomy position)
+        const meshPos = planet.container.position;
         // Convert 3D position to 2D mini map (X, Z plane, ignoring Y height)
         const x = centerX + (meshPos.x / scale);
         const y = centerY + (meshPos.z / scale);
@@ -2029,8 +2037,8 @@ function updateMiniMap() {
     
     // Draw dwarf planets (Pluto uses real position, no circular orbit line)
     dwarfPlanets.forEach(dwarfPlanet => {
-        // Get dwarf planet position from mesh (uses real astronomy position)
-        const meshPos = dwarfPlanet.mesh.position;
+        // Get dwarf planet position from container (uses real astronomy position)
+        const meshPos = dwarfPlanet.container.position;
         // Convert 3D position to 2D mini map (X, Z plane, ignoring Y height)
         const x = centerX + (meshPos.x / scale);
         const y = centerY + (meshPos.z / scale);
