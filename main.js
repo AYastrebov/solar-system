@@ -292,10 +292,16 @@ function init() {
     const loadingManager = new THREE.LoadingManager();
     const loadingErrors = [];
     
-    loadingManager.onLoad = () => {
+    let loaderHidden = false;
+    const hideLoader = () => {
+        if (loaderHidden) return;
+        loaderHidden = true;
         const loader = document.getElementById('loader');
         if (loader) loader.classList.add('hidden');
-        
+    };
+    
+    loadingManager.onLoad = () => {
+        hideLoader();
         if (loadingErrors.length > 0) {
             console.warn('Some textures failed to load:', loadingErrors);
         }
@@ -419,6 +425,10 @@ function init() {
     
     // Start animation loop
     animate();
+    
+    // Hide loader shortly after init. LoadingManager.onLoad may also hide it earlier,
+    // but some browsers/environments don't fire it reliably, so this ensures the scene is visible.
+    setTimeout(hideLoader, 1000);
 }
 
 function warnIfFileProtocol() {
@@ -1367,7 +1377,7 @@ function createMoons(parentBody, planetName) {
         
         // Create moon orbit path (smaller, more transparent)
         const moonOrbitPath = createMoonOrbitPath(data.orbitRadius);
-        planet.add(moonOrbitPath);
+        parentBody.add(moonOrbitPath);
         moonOrbitLines.push(moonOrbitPath);
         
         // Add label to moon
