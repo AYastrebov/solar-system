@@ -11,18 +11,23 @@ Use this skill when working with real astronomy data from `astronomy-engine` ins
 
 - **J2000 Equatorial (EQJ):** default output of `Astronomy.HelioVector()`.
 - **Ecliptic:** orbital plane of Earth; convert with `Astronomy.Ecliptic(v)`.
-- **Three.js:** Y-up, right-handed; typically negate Z to align with astronomy-engine conventions.
+- **Three.js:** Y-up, right-handed. The project maps the ecliptic plane to Three.js's XZ plane:
+  ecliptic `(x, y, z)` becomes Three.js `(x, z, -y)`. This places the orbital plane flat on the
+  XZ plane with Y as "up" out of the plane.
 
 ```javascript
 // astronomy-engine Vector to Three.js Vector3 in scene units
-const AU_TO_VISUAL = 20; // project-specific scale
-const pos = new THREE.Vector3(v.x, v.y, -v.z).multiplyScalar(AU_TO_VISUAL);
+// (matches main.js:108-111 and main.js:857-859)
+const AU_TO_VISUAL = 20; // project-specific scale; project currently uses 22
+const pos = new THREE.Vector3(v.x, v.z, -v.y).multiplyScalar(AU_TO_VISUAL);
 ```
+
+> **Observer-local coordinates:** `Astronomy.Horizon(date, observer, ra, dec, refraction)` is available when you need altitude/azimuth for a specific location on Earth.
 
 ## Positioning Planets
 
 ```javascript
-const AU_TO_VISUAL = 20;
+const AU_TO_VISUAL = 20; // project currently uses 22
 const ASTRONOMY_TIME_THRESHOLD_MS = 1000 * 60 * 60; // recompute once per simulated hour
 
 let lastSimDate = null;
@@ -41,7 +46,8 @@ function getHelioPosition(bodyName, simDate) {
   if (!cachedPositions.has(bodyName)) {
     const vec = Astronomy.HelioVector(bodyName, simDate);
     const ecl = Astronomy.Ecliptic(vec);
-    cachedPositions.set(bodyName, new THREE.Vector3(ecl.vec.x, ecl.vec.y, -ecl.vec.z).multiplyScalar(AU_TO_VISUAL));
+    // Ecliptic plane -> Three.js XZ plane (see main.js:108-111, main.js:857-859)
+    cachedPositions.set(bodyName, new THREE.Vector3(ecl.vec.x, ecl.vec.z, -ecl.vec.y).multiplyScalar(AU_TO_VISUAL));
   }
   return cachedPositions.get(bodyName);
 }
@@ -73,7 +79,8 @@ ioContainer.rotation.y = -angle;
 ```javascript
 // Parent container holds the tilt
 const tiltContainer = new THREE.Object3D();
-tiltContainer.rotation.z = THREE.Math.degToRad(obliquityDegrees);
+// Three.js r128 renamed THREE.Math to THREE.MathUtils
+tiltContainer.rotation.z = THREE.MathUtils.degToRad(obliquityDegrees);
 scene.add(tiltContainer);
 
 // Mesh spins inside the container
@@ -104,11 +111,13 @@ const sunLocal = new THREE.Vector3(0, 0, 0);
 moonMesh.worldToLocal(sunLocal);
 moonPhaseMaterial.uniforms.sunDirection.value.copy(sunLocal).normalize();
 
-// Phase angle (0 = new, PI = full)
-const earthPos = Astronomy.GeoVector('Earth', simDate, true);
-const moonPos = Astronomy.GeoMoon(simDate);
-const sunPos = Astronomy.GeoVector('Sun', simDate, true);
-const phaseAngle = Astronomy.AngleBetween(moonPos, sunPos, earthPos);
+// Phase angle for the Moon (project uses this pattern at main.js:2032-2035)
+const illum = Astronomy.Illumination('Moon', simDate);
+const phaseAngleRad = illum.phase_angle * Math.PI / 180.0;
+// phase_angle = 0° means full Moon, 180° means new Moon
+
+// For named/integer phases you can also use:
+const phaseName = Astronomy.MoonPhase(simDate); // e.g. Astronomy.Phase.New, FirstQuarter, etc.
 ```
 
 ## Visual Scaling
