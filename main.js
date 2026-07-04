@@ -30,6 +30,9 @@ let currentSpeedIndex = 1; // Start at 0.25x
 const SUN_RADIUS = 5.5;  // Visual radius (real Sun is 109x Earth, scaled for visibility)
 const FRAME_TIME_SCALE = 60;
 const MINI_MAP_INTERVAL = 1 / 15;
+// Converts a sidereal rotation period (Earth days) to simulation rotation speed
+// Earth at 1 AU orbits at angular speed 0.1 rad per sim time unit
+const ROTATION_SPEED_FACTOR = (0.1 * 365.25) / FRAME_TIME_SCALE;
 let lastMiniMapUpdate = 0;
 
 // Camera focus/follow
@@ -116,9 +119,10 @@ function getHelioPosition(bodyName, simDate) {
 // Planet data: name, color, size, orbitRadius, orbitSpeed, rotationSpeed, inclination (degrees), axialTilt, texture, info
 // Sizes are more proportional: terrestrial ~0.4-1, gas giants ~4-6, ice giants ~2-2.5
 // Real proportions: Mercury 0.38, Venus 0.95, Earth 1, Mars 0.53, Jupiter 11, Saturn 9, Uranus 4, Neptune 3.9
+// orbitRadius and orbitSpeed are legacy visual approximations; real positions come from astronomy-engine
 const planetData = [
     { 
-        name: 'Mercury', color: 0x8c8c8c, size: 0.38, orbitRadius: 10, orbitSpeed: 4.15, rotationSpeed: 0.01,
+        name: 'Mercury', color: 0x8c8c8c, size: 0.38, orbitRadius: 10, orbitSpeed: 4.15, rotationSpeed: ROTATION_SPEED_FACTOR / 58.646,
         inclination: 7.0, axialTilt: 0.03,
         texture: 'textures/2k_mercury.jpg',
         info: { 
@@ -129,7 +133,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Venus', color: 0xe6c87a, size: 0.95, orbitRadius: 15, orbitSpeed: 1.62, rotationSpeed: -0.004,
+        name: 'Venus', color: 0xe6c87a, size: 0.95, orbitRadius: 15, orbitSpeed: 1.62, rotationSpeed: -ROTATION_SPEED_FACTOR / 243.025,
         inclination: 3.4, axialTilt: 177.4,
         texture: 'textures/2k_venus_atmosphere.jpg',
         info: { 
@@ -140,7 +144,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Earth', color: 0x6b93d6, size: 1.0, orbitRadius: 20, orbitSpeed: 1, rotationSpeed: 0.02,
+        name: 'Earth', color: 0x6b93d6, size: 1.0, orbitRadius: 20, orbitSpeed: 1, rotationSpeed: ROTATION_SPEED_FACTOR / 0.997268,
         inclination: 0.0, axialTilt: 23.4,
         texture: 'textures/2k_earth_daymap.jpg',
         info: { 
@@ -151,7 +155,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Mars', color: 0xc1440e, size: 0.53, orbitRadius: 25, orbitSpeed: 0.53, rotationSpeed: 0.018,
+        name: 'Mars', color: 0xc1440e, size: 0.53, orbitRadius: 25, orbitSpeed: 0.53, rotationSpeed: ROTATION_SPEED_FACTOR / 1.025957,
         inclination: 1.85, axialTilt: 25.2,
         texture: 'textures/2k_mars.jpg',
         info: { 
@@ -162,7 +166,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Jupiter', color: 0xd8ca9d, size: 5.5, orbitRadius: 35, orbitSpeed: 0.084, rotationSpeed: 0.04,
+        name: 'Jupiter', color: 0xd8ca9d, size: 5.5, orbitRadius: 35, orbitSpeed: 0.084, rotationSpeed: ROTATION_SPEED_FACTOR / 0.41354,
         inclination: 1.31, axialTilt: 3.1,
         texture: 'textures/2k_jupiter.jpg',
         info: { 
@@ -173,7 +177,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Saturn', color: 0xead6b8, size: 4.5, orbitRadius: 45, orbitSpeed: 0.034, rotationSpeed: 0.038,
+        name: 'Saturn', color: 0xead6b8, size: 4.5, orbitRadius: 45, orbitSpeed: 0.034, rotationSpeed: ROTATION_SPEED_FACTOR / 0.44401,
         inclination: 2.49, axialTilt: 26.7,
         texture: 'textures/2k_saturn.jpg',
         info: { 
@@ -184,7 +188,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Uranus', color: 0xc9eeff, size: 2.2, orbitRadius: 55, orbitSpeed: 0.012, rotationSpeed: -0.03,
+        name: 'Uranus', color: 0xc9eeff, size: 2.2, orbitRadius: 55, orbitSpeed: 0.012, rotationSpeed: -ROTATION_SPEED_FACTOR / 0.71833,
         inclination: 0.77, axialTilt: 97.8,
         texture: 'textures/2k_uranus.jpg',
         info: { 
@@ -195,7 +199,7 @@ const planetData = [
         }
     },
     { 
-        name: 'Neptune', color: 0x5b7fde, size: 2.1, orbitRadius: 65, orbitSpeed: 0.006, rotationSpeed: 0.032,
+        name: 'Neptune', color: 0x5b7fde, size: 2.1, orbitRadius: 65, orbitSpeed: 0.006, rotationSpeed: ROTATION_SPEED_FACTOR / 0.67125,
         inclination: 1.77, axialTilt: 28.3,
         texture: 'textures/2k_neptune.jpg',
         info: { 
