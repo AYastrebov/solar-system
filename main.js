@@ -12,6 +12,7 @@ let sunFlares = [];  // For solar flare particles
 let planets = [];
 let planetEffects = [];  // For animated planet effects
 let moons = [];
+let moonPhaseMaterial;  // Shader material for Earth's Moon phases
 let asteroidBelt;  // Asteroid belt particle system
 let kuiperBelt;    // Kuiper belt particle system
 let dwarfPlanets = [];  // Dwarf planets array
@@ -1338,6 +1339,39 @@ function addLabel(object, text, isSun, isMoon, radius) {
     object.add(label);
 }
 
+// Create a shader material that visualizes Moon phases by darkening
+// fragments facing away from the Sun.
+function createMoonPhaseMaterial(texture) {
+    texture.encoding = THREE.sRGBEncoding;
+    return new THREE.ShaderMaterial({
+        uniforms: {
+            map: { value: texture },
+            sunDirection: { value: new THREE.Vector3(1, 0, 0) }
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            void main() {
+                vUv = uv;
+                vNormal = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform sampler2D map;
+            uniform vec3 sunDirection;
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            void main() {
+                vec4 texColor = texture2D(map, vUv);
+                float lighting = smoothstep(-0.05, 0.05, dot(vNormal, normalize(sunDirection)));
+                vec3 darkSide = texColor.rgb * 0.04;
+                gl_FragColor = vec4(mix(darkSide, texColor.rgb, lighting), texColor.a);
+            }
+        `
+    });
+}
+
 // Create moons for a planet (parent is the planet system container)
 function createMoons(parentBody, planetName) {
     const planetMoons = moonData[planetName];
@@ -1352,11 +1386,17 @@ function createMoons(parentBody, planetName) {
             // Load moon texture if available
             const moonTexture = textureLoader.load(data.texture);
             moonTexture.encoding = THREE.sRGBEncoding;
-            material = new THREE.MeshStandardMaterial({
-                map: moonTexture,
-                roughness: 0.9,
-                metalness: 0.1
-            });
+            // Earth's Moon gets a phase-aware shader; other moons use standard lighting
+            if (data.name === 'Moon') {
+                material = createMoonPhaseMaterial(moonTexture);
+                moonPhaseMaterial = material;
+            } else {
+                material = new THREE.MeshStandardMaterial({
+                    map: moonTexture,
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+            }
         } else {
             material = new THREE.MeshStandardMaterial({
                 color: data.color,
@@ -1644,6 +1684,16 @@ function animate() {
     
     // Animate moons using astronomy data where available
     updateMoonPositions(simDate);
+    
+    // Update Moon phase lighting (Sun direction in Moon's local space)
+    if (moonPhaseMaterial) {
+        const earthMoon = moons.find(m => m.data.name === 'Moon');
+        if (earthMoon) {
+            const sunLocal = new THREE.Vector3(0, 0, 0);
+            earthMoon.mesh.worldToLocal(sunLocal);
+            moonPhaseMaterial.uniforms.sunDirection.value.copy(sunLocal).normalize();
+        }
+    }
     
     // Animate planet effects
     animatePlanetEffects(visualTime, delta);
