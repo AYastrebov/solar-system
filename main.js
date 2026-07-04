@@ -1623,12 +1623,10 @@ function animate() {
     // Animate planet effects
     animatePlanetEffects(visualTime, delta);
     
-    // Animate asteroid belt and Kuiper belt
-    if (asteroidBelt && settings.showAsteroids) {
-        asteroidBelt.rotation.y += 0.0005 * timeScale * deltaScale;
-    }
-    if (kuiperBelt && settings.showAsteroids) {
-        kuiperBelt.rotation.y += 0.0002 * timeScale * deltaScale; // Slower rotation for outer belt
+    // Animate asteroid belt and Kuiper belt with individual Keplerian orbits
+    if (settings.showAsteroids) {
+        updateBeltParticles(asteroidBelt, simulationTime);
+        updateBeltParticles(kuiperBelt, simulationTime);
     }
     
     // Update camera if following a planet
@@ -1661,84 +1659,123 @@ function animate() {
     labelRenderer.render(scene, camera);
 }
 
-// Create asteroid belt between Mars and Jupiter
+
+// Create asteroid belt between Mars and Jupiter with Keplerian orbits
 function createAsteroidBelt() {
-    const asteroidCount = 4000;  // More asteroids for density
+    const asteroidCount = 4000;
     // Asteroid belt spans from just outside Mars (~1.7 AU) to just inside Jupiter (~4.5 AU)
-    const innerRadius = 1.7 * AU_TO_VISUAL;  // ~34 units (just outside Mars)
-    const outerRadius = 4.5 * AU_TO_VISUAL;  // ~90 units (just inside Jupiter)
+    const innerRadius = 1.7 * AU_TO_VISUAL;  // ~34 units
+    const outerRadius = 4.5 * AU_TO_VISUAL;  // ~90 units
     
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(asteroidCount * 3);
+    const orbits = [];
     
     for (let i = 0; i < asteroidCount; i++) {
-        const radius = innerRadius + Math.random() * (outerRadius - innerRadius);
-        const angle = Math.random() * Math.PI * 2;
+        const aVisual = innerRadius + Math.random() * (outerRadius - innerRadius);
+        const aAU = aVisual / AU_TO_VISUAL;
+        // Inclination up to ~8 degrees (most asteroids are near ecliptic)
+        const iRad = (Math.random() - 0.5) * 0.15;
+        const phase = Math.random() * Math.PI * 2;
+        // Keplerian angular speed: n ∝ a^(-3/2); Earth at 1 AU has speed 0.1
+        const speed = 0.1 * Math.pow(aAU, -1.5);
         
-        // Position in ecliptic plane (same as planets)
-        const x = Math.cos(angle) * radius;
-        const z = -Math.sin(angle) * radius;  // Negative to match planet orbit direction
+        orbits.push({ a: aVisual, i: iRad, phase, speed });
         
-        // Add vertical spread for belt thickness (individual asteroid inclinations)
-        // Most asteroids are within ~10 degrees of ecliptic
-        const height = (Math.random() - 0.5) * radius * 0.15;  // ~8 degree spread
+        // Set initial position
+        const cosM = Math.cos(phase);
+        const sinM = Math.sin(phase);
+        const cosI = Math.cos(iRad);
+        const sinI = Math.sin(iRad);
         
-        positions[i * 3] = x;
-        positions[i * 3 + 1] = height;
-        positions[i * 3 + 2] = z;
+        positions[i * 3] = aVisual * cosM;
+        positions[i * 3 + 1] = aVisual * sinM * sinI;
+        positions[i * 3 + 2] = -aVisual * sinM * cosI;
     }
     
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     
     const material = new THREE.PointsMaterial({
         color: 0x888888,
-        size: 0.2,  // Small, asteroid-like
+        size: 0.2,
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.6
     });
     
     asteroidBelt = new THREE.Points(geometry, material);
+    asteroidBelt.userData.orbits = orbits;
     scene.add(asteroidBelt);
 }
 
-// Create Kuiper belt beyond Neptune
+// Update belt particle positions from stored Keplerian orbital elements
+function updateBeltParticles(belt, simTime) {
+    if (!belt || !belt.userData.orbits) return;
+    
+    const positions = belt.geometry.attributes.position.array;
+    const orbits = belt.userData.orbits;
+    
+    for (let i = 0; i < orbits.length; i++) {
+        const orbit = orbits[i];
+        const M = orbit.phase + orbit.speed * simTime;
+        const cosM = Math.cos(M);
+        const sinM = Math.sin(M);
+        const cosI = Math.cos(orbit.i);
+        const sinI = Math.sin(orbit.i);
+        
+        positions[i * 3] = orbit.a * cosM;
+        positions[i * 3 + 1] = orbit.a * sinM * sinI;
+        positions[i * 3 + 2] = -orbit.a * sinM * cosI;
+    }
+    
+    belt.geometry.attributes.position.needsUpdate = true;
+}
+
+// Create Kuiper belt beyond Neptune with Keplerian orbits
 function createKuiperBelt() {
-    const objectCount = 6000;  // More objects for larger area
+    const objectCount = 6000;
     // Kuiper belt extends from Neptune (~30 AU) to about 50 AU
     const innerRadius = 30 * AU_TO_VISUAL;   // ~600 units
     const outerRadius = 50 * AU_TO_VISUAL;   // ~1000 units
     
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(objectCount * 3);
+    const orbits = [];
     
     for (let i = 0; i < objectCount; i++) {
-        const radius = innerRadius + Math.random() * (outerRadius - innerRadius);
-        const angle = Math.random() * Math.PI * 2;
+        const aVisual = innerRadius + Math.random() * (outerRadius - innerRadius);
+        const aAU = aVisual / AU_TO_VISUAL;
+        // Kuiper belt has wider inclinations, up to ~20 degrees
+        const iRad = (Math.random() - 0.5) * 0.35;
+        const phase = Math.random() * Math.PI * 2;
+        // Keplerian angular speed: n ∝ a^(-3/2); Earth at 1 AU has speed 0.1
+        const speed = 0.1 * Math.pow(aAU, -1.5);
         
-        // Position in ecliptic plane (same as planets)
-        const x = Math.cos(angle) * radius;
-        const z = -Math.sin(angle) * radius;  // Negative to match planet orbit direction
+        orbits.push({ a: aVisual, i: iRad, phase, speed });
         
-        // Kuiper belt has more vertical spread than asteroid belt (~20 degree spread)
-        const height = (Math.random() - 0.5) * radius * 0.35;
+        // Set initial position
+        const cosM = Math.cos(phase);
+        const sinM = Math.sin(phase);
+        const cosI = Math.cos(iRad);
+        const sinI = Math.sin(iRad);
         
-        positions[i * 3] = x;
-        positions[i * 3 + 1] = height;
-        positions[i * 3 + 2] = z;
+        positions[i * 3] = aVisual * cosM;
+        positions[i * 3 + 1] = aVisual * sinM * sinI;
+        positions[i * 3 + 2] = -aVisual * sinM * cosI;
     }
     
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     
     const material = new THREE.PointsMaterial({
-        color: 0x8899bb,  // Slightly bluish/icy color
-        size: 0.5,  // Small but visible at distance
+        color: 0x8899bb,
+        size: 0.5,
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.5
     });
     
     kuiperBelt = new THREE.Points(geometry, material);
+    kuiperBelt.userData.orbits = orbits;
     scene.add(kuiperBelt);
 }
 
