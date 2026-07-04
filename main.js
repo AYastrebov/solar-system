@@ -1426,6 +1426,11 @@ function updateMoonPositions(simDate) {
             moon.container.rotation.y = -simulationTime * moon.data.orbitSpeed * 0.5;
         }
     });
+    
+    // Tidal locking: keep the same face toward the parent planet
+    moons.forEach(moon => {
+        moon.mesh.rotation.y = -moon.container.rotation.y;
+    });
 }
 
 // Create smaller orbit path for moons
