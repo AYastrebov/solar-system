@@ -30,9 +30,11 @@ let currentSpeedIndex = 1; // Start at 0.25x
 const SUN_RADIUS = 5.5;  // Visual radius (real Sun is 109x Earth, scaled for visibility)
 const FRAME_TIME_SCALE = 60;
 const MINI_MAP_INTERVAL = 1 / 15;
-// Converts a sidereal rotation period (Earth days) to simulation rotation speed
-// Earth at 1 AU orbits at angular speed 0.1 rad per sim time unit
-const ROTATION_SPEED_FACTOR = (0.1 * 365.25) / FRAME_TIME_SCALE;
+// Converts a sidereal rotation period (Earth days) to simulation rotation speed.
+// Earth at 1 AU orbits at angular speed 0.1 rad per sim time unit.
+// VISUAL_ROTATION_SCALE slows all rotations proportionally so gas giants don't blur.
+const VISUAL_ROTATION_SCALE = 0.2;
+const ROTATION_SPEED_FACTOR = (0.1 * 365.25 * VISUAL_ROTATION_SCALE) / FRAME_TIME_SCALE;
 let lastMiniMapUpdate = 0;
 
 // Camera focus/follow
